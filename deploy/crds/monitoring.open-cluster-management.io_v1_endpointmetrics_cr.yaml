@@ -3,5 +3,13 @@ kind: EndpointMetrics
 metadata:
   name: example-endpointmetrics
 spec:
-  # Add fields here
-  size: 3
+  global:
+    serverUrl: observatorium-api-gateway-acm-monitoring.apps.calm-midge.dev05.red-chesterfield.com
+  metricsCollectors:
+  - type: OCP_PROMETHEUS
+    enable: true
+    reabelConfigs:
+    - sourceLabels: [__name__]
+      replacement: spoke_cluster
+      targetLabel: cluster_name
+

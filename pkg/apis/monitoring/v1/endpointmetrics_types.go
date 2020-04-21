@@ -18,14 +18,14 @@ type EndpointMetricsSpec struct {
 }
 
 type GlobalConfigSpec struct {
-	SeverURL       string            `json:"serverUrl"`
-	TLSConfig      *monv1.TLSConfig  `json:"tlsConfig,omitempty"`
-	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+	SeverURL  string           `json:"serverUrl"`
+	TLSConfig *monv1.TLSConfig `json:"tlsConfig,omitempty"`
 }
 
 type MetricsCollectorSpec struct {
-	Enable bool   `json:"enable"`
-	Type   string `json:"type"`
+	Enable         bool                  `json:"enable"`
+	Type           string                `json:"type"`
+	RelabelConfigs []monv1.RelabelConfig `json:"reabelConfigs,omitempty"`
 }
 
 // EndpointMetricsStatus defines the observed state of EndpointMetrics
