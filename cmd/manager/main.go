@@ -109,17 +109,24 @@ func main() {
 	}
 
 	// Create a new manager to provide shared dependencies and start components
-	hubCfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: "/spoke/hub-kubeconfig/config"},
-		&clientcmd.ConfigOverrides{
-			ClusterInfo: clientcmdapi.Cluster{
-				Server: "",
-			},
-			CurrentContext: "",
-		}).ClientConfig()
-	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
+	// firstly create the config for hub cluster resource watch
+	hubCfg := cfg
+	hubCfgPath, found := os.LookupEnv("HUB_KUBECONFIG")
+	if !found {
+		log.Info("No env HUB_KUBECONFIG found")
+	} else {
+		hubCfg, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: hubCfgPath},
+			&clientcmd.ConfigOverrides{
+				ClusterInfo: clientcmdapi.Cluster{
+					Server: "",
+				},
+				CurrentContext: "",
+			}).ClientConfig()
+		if err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
 	}
 
 	mgr, err := manager.New(hubCfg, options)
