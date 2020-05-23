@@ -5,11 +5,11 @@ go 1.13
 require (
 	github.com/Azure/go-autorest v12.2.0+incompatible // indirect
 	github.com/coreos/prometheus-operator v0.38.0
-	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200420232746-73973c11a321
+	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200522023541-a1eb5aa9af3f
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/spf13/pflag v1.0.5
-	k8s.io/api v0.17.4
-	k8s.io/apimachinery v0.17.4
+	k8s.io/api v0.18.2
+	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.5.2
 )

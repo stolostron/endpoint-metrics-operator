@@ -1,10 +1,10 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
 package endpointmetrics
 
 import (
 	"context"
 
-	monitoringv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,6 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	monitoringv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
 var log = logf.Log.WithName("controller_endpointmetrics")
