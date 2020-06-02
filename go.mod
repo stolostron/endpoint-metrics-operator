@@ -3,7 +3,6 @@ module github.com/open-cluster-management/endpoint-metrics-operator
 go 1.13
 
 require (
-	github.com/Azure/go-autorest v12.2.0+incompatible // indirect
 	github.com/coreos/prometheus-operator v0.38.0
 	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200522023541-a1eb5aa9af3f
 	github.com/operator-framework/operator-sdk v0.17.0
