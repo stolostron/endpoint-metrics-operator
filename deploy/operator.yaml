@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: endpoint-metrics-operator
+  name: endpoint-monitoring-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: endpoint-metrics-operator
+      name: endpoint-monitoring-operator
   template:
     metadata:
       labels:
-        name: endpoint-metrics-operator
+        name: endpoint-monitoring-operator
     spec:
-      serviceAccountName: endpoint-metrics-operator
+      serviceAccountName: endpoint-monitoring-operator
       containers:
-        - name: endpoint-metrics-operator
+        - name: endpoint-monitoring-operator
           # Replace this with the built image name
           image: REPLACE_IMAGE
           command:
-          - endpoint-metrics-operator
+          - endpoint-monitoring-operator
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -30,4 +30,4 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "endpoint-metrics-operator"
+              value: "endpoint-monitoring-operator"

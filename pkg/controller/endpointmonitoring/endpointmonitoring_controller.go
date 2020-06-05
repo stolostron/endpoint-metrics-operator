@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package endpointmetrics
+package endpointmonitoring
 
 import (
 	"context"
@@ -20,14 +20,14 @@ import (
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
-var log = logf.Log.WithName("controller_endpointmetrics")
+var log = logf.Log.WithName("controller_endpointmonitoring")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new EndpointMetrics Controller and adds it to the Manager.
+// Add creates a new EndpointMonitoring Controller and adds it to the Manager.
 // The Manager will set fields on the Controller and Start it when the Manager
 // is Started.
 func Add(mgr manager.Manager) error {
@@ -36,28 +36,28 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileEndpointMetrics{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileEndpointMonitoring{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("endpointmetrics-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("endpointmonitoring-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource EndpointMetrics
-	err = c.Watch(&source.Kind{Type: &monitoringv1.EndpointMetrics{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource EndpointMonitoring
+	err = c.Watch(&source.Kind{Type: &monitoringv1.EndpointMonitoring{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner EndpointMetrics
+	// Watch for changes to secondary resource Pods and requeue the owner EndpointMonitoring
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1.EndpointMetrics{},
+		OwnerType:    &monitoringv1.EndpointMonitoring{},
 	})
 	if err != nil {
 		return err
@@ -66,30 +66,30 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileEndpointMetrics implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileEndpointMetrics{}
+// blank assignment to verify that ReconcileEndpointMonitoring implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcileEndpointMonitoring{}
 
-// ReconcileEndpointMetrics reconciles a EndpointMetrics object
-type ReconcileEndpointMetrics struct {
+// ReconcileEndpointMonitoring reconciles a EndpointMonitoring object
+type ReconcileEndpointMonitoring struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a EndpointMetrics object and makes changes based on the state read
-// and what is in the EndpointMetrics.Spec
+// Reconcile reads that state of the cluster for a EndpointMonitoring object and makes changes based on the state read
+// and what is in the EndpointMonitoring.Spec
 // Modify this Reconcile function to implement your Controller logic.  This example creates
 // a Pod as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileEndpointMetrics) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling EndpointMetrics")
+	reqLogger.Info("Reconciling EndpointMonitoring")
 
-	// Fetch the EndpointMetrics instance
-	instance := &monitoringv1.EndpointMetrics{}
+	// Fetch the EndpointMonitoring instance
+	instance := &monitoringv1.EndpointMonitoring{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
