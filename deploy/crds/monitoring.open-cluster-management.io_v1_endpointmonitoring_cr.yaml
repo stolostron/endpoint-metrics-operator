@@ -1,7 +1,7 @@
 apiVersion: monitoring.open-cluster-management.io/v1
-kind: EndpointMetrics
+kind: EndpointMonitoring
 metadata:
-  name: example-endpointmetrics
+  name: example-endpointmonitoring
 spec:
   global:
     serverUrl: observatorium-api-gateway-acm-monitoring.apps.calm-midge.dev05.red-chesterfield.com

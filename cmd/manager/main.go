@@ -87,7 +87,7 @@ func main() {
 
 	ctx := context.TODO()
 	// Become the leader before proceeding
-	err = leader.Become(ctx, "endpoint-metrics-operator-lock")
+	err = leader.Become(ctx, "endpoint-monitoring-operator-lock")
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
