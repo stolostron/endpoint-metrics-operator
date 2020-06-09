@@ -5,19 +5,26 @@ package endpointmonitoring
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	monitoringv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
+)
+
+const (
+	epConfigName    = "endpoint-config"
+	ownerLabelKey   = "owner"
+	ownerLabelValue = "multicluster-operator"
 )
 
 var log = logf.Log.WithName("controller_endpointmonitoring")
@@ -47,18 +54,27 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource EndpointMonitoring
-	err = c.Watch(&source.Kind{Type: &monitoringv1.EndpointMonitoring{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == epConfigName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+			//return !e.DeleteStateUnknown
+		},
 	}
 
-	// Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner EndpointMonitoring
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &monitoringv1.EndpointMonitoring{},
-	})
+	// Watch for changes to primary resource EndpointMonitoring
+	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.EndpointMonitoring{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
 	}
@@ -89,7 +105,7 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 	reqLogger.Info("Reconciling EndpointMonitoring")
 
 	// Fetch the EndpointMonitoring instance
-	instance := &monitoringv1.EndpointMonitoring{}
+	instance := &monitoringv1alpha1.EndpointMonitoring{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
