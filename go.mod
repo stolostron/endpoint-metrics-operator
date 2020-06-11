@@ -3,7 +3,7 @@ module github.com/open-cluster-management/endpoint-metrics-operator
 go 1.13
 
 require (
-	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200610091521-823dc807f5f5
+	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200611200601-e8d7d8fbadb8
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.18.3

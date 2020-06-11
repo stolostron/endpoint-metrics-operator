@@ -958,6 +958,8 @@ github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200
 github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200608223929-d57dbeabfe60/go.mod h1:kuQ3pwJZNrAtsB8gei7fBXaDJUg5SLE97xU8Gq36Owg=
 github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200610091521-823dc807f5f5 h1:Vd/m4rjHmfJY2oQ8ApiRDxCYSlR2ZZ+/2puQJLOewuI=
 github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200610091521-823dc807f5f5/go.mod h1:KB94/M4ohiNh2y2spZ3VV3o6FC9k/ZagZfsPPmjeczs=
+github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200611200601-e8d7d8fbadb8 h1:meX8cJFd3LdstqqvsnwshLBkuuFsOcTGlv+zXSjTviM=
+github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200611200601-e8d7d8fbadb8/go.mod h1:KB94/M4ohiNh2y2spZ3VV3o6FC9k/ZagZfsPPmjeczs=
 github.com/opencontainers/go-digest v0.0.0-20170106003457-a6d0ee40d420/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v0.0.0-20180430190053-c9281466c8b2/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=

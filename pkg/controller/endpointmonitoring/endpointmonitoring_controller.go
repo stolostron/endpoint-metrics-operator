@@ -25,6 +25,7 @@ const (
 	epConfigName    = "endpoint-config"
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-operator"
+	epFinalizer     = "monitoring.open-cluster-management.io/endpoint-monitoring-cleanup"
 )
 
 var log = logf.Log.WithName("controller_endpointmonitoring")
@@ -68,8 +69,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return !e.DeleteStateUnknown
+			}
 			return false
-			//return !e.DeleteStateUnknown
 		},
 	}
 
@@ -118,6 +121,12 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
+	// Init finalizers
+	err = r.initFinalization(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	for _, collector := range instance.Spec.MetricsCollectorList {
 		if collector.Type == "OCP_PROMETHEUS" {
 			err = util.UpdateClusterMonitoringConfig(instance.Spec.GlobalConfig.SeverURL, &collector.RelabelConfigs)
@@ -130,4 +139,58 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileEndpointMonitoring) initFinalization(ep *monitoringv1alpha1.EndpointMonitoring) error {
+	if ep.GetDeletionTimestamp() != nil {
+		if contains(ep.GetFinalizers(), epFinalizer) {
+			log.Info("To revert configurations")
+			for _, collector := range ep.Spec.MetricsCollectorList {
+				if collector.Type == "OCP_PROMETHEUS" {
+					err := util.UpdateClusterMonitoringConfig(ep.Spec.GlobalConfig.SeverURL, nil)
+					if err != nil {
+						return err
+					}
+				} else {
+					log.Info("Unsupported collector", "type", collector.Type)
+				}
+			}
+			ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
+			err := r.client.Update(context.TODO(), ep)
+			if err != nil {
+				log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
+				return err
+			}
+			log.Info("Finalizer removed from endpointmonitoring resource")
+		}
+	}
+	if !contains(ep.GetFinalizers(), epFinalizer) {
+		ep.SetFinalizers(append(ep.GetFinalizers(), epFinalizer))
+		err := r.client.Update(context.TODO(), ep)
+		if err != nil {
+			log.Error(err, "Failed to add finalizer to endpointmonitoring", "namespace", ep.Namespace)
+			return err
+		}
+		log.Info("Finalizer added to endpointmonitoring resource")
+	}
+	return nil
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+func remove(list []string, s string) []string {
+	result := []string{}
+	for _, v := range list {
+		if v != s {
+			result = append(result, v)
+		}
+	}
+	return result
 }
