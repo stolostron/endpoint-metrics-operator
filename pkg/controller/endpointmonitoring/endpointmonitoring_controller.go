@@ -142,27 +142,25 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 }
 
 func (r *ReconcileEndpointMonitoring) initFinalization(ep *monitoringv1alpha1.EndpointMonitoring) error {
-	if ep.GetDeletionTimestamp() != nil {
-		if contains(ep.GetFinalizers(), epFinalizer) {
-			log.Info("To revert configurations")
-			for _, collector := range ep.Spec.MetricsCollectorList {
-				if collector.Type == "OCP_PROMETHEUS" {
-					err := util.UpdateClusterMonitoringConfig(ep.Spec.GlobalConfig.SeverURL, nil)
-					if err != nil {
-						return err
-					}
-				} else {
-					log.Info("Unsupported collector", "type", collector.Type)
+	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
+		log.Info("To revert configurations")
+		for _, collector := range ep.Spec.MetricsCollectorList {
+			if collector.Type == "OCP_PROMETHEUS" {
+				err := util.UpdateClusterMonitoringConfig(ep.Spec.GlobalConfig.SeverURL, nil)
+				if err != nil {
+					return err
 				}
+			} else {
+				log.Info("Unsupported collector", "type", collector.Type)
 			}
-			ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
-			err := r.client.Update(context.TODO(), ep)
-			if err != nil {
-				log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
-				return err
-			}
-			log.Info("Finalizer removed from endpointmonitoring resource")
 		}
+		ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
+		err := r.client.Update(context.TODO(), ep)
+		if err != nil {
+			log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
+			return err
+		}
+		log.Info("Finalizer removed from endpointmonitoring resource")
 	}
 	if !contains(ep.GetFinalizers(), epFinalizer) {
 		ep.SetFinalizers(append(ep.GetFinalizers(), epFinalizer))
