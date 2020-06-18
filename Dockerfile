@@ -36,7 +36,7 @@ ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_NAME=endpoint-monitoring-operator
 
 # install operator binary
-COPY build/_output/bin/endpoint-metrics-operator ${OPERATOR}
+COPY build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
 
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
