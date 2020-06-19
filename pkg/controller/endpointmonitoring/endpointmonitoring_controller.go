@@ -5,8 +5,11 @@ package endpointmonitoring
 import (
 	"context"
 
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -18,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
 const (
@@ -44,7 +46,23 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileEndpointMonitoring{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	// Create kube client
+	kubeClient, err := createKubeClient()
+	if err != nil {
+		log.Error(err, "Failed to create the Kubernetes client")
+		return nil
+	}
+	// Create OCP client
+	ocpClient, err := createOCPClient()
+	if err != nil {
+		log.Error(err, "Failed to create the OpenShift client")
+		return nil
+	}
+	return &ReconcileEndpointMonitoring{
+		client:     mgr.GetClient(),
+		kubeClient: kubeClient,
+		ocpClient:  ocpClient,
+		scheme:     mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -92,8 +110,10 @@ var _ reconcile.Reconciler = &ReconcileEndpointMonitoring{}
 type ReconcileEndpointMonitoring struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client     client.Client
+	scheme     *runtime.Scheme
+	kubeClient kubernetes.Interface
+	ocpClient  ocpClientSet.Interface
 }
 
 // Reconcile reads that state of the cluster for a EndpointMonitoring object and makes changes based on the state read
@@ -129,7 +149,8 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 
 	for _, collector := range instance.Spec.MetricsCollectorList {
 		if collector.Type == "OCP_PROMETHEUS" {
-			err = util.UpdateClusterMonitoringConfig(instance.Spec.GlobalConfig.SeverURL, &collector.RelabelConfigs)
+			err = updateClusterMonitoringConfig(r.kubeClient, r.ocpClient,
+				instance.Spec.GlobalConfig.SeverURL, &collector.RelabelConfigs)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -141,12 +162,14 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileEndpointMonitoring) initFinalization(ep *monitoringv1alpha1.EndpointMonitoring) error {
+func (r *ReconcileEndpointMonitoring) initFinalization(
+	ep *monitoringv1alpha1.EndpointMonitoring) error {
 	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
 		for _, collector := range ep.Spec.MetricsCollectorList {
 			if collector.Type == "OCP_PROMETHEUS" {
-				err := util.UpdateClusterMonitoringConfig(ep.Spec.GlobalConfig.SeverURL, nil)
+				err := updateClusterMonitoringConfig(r.kubeClient, r.ocpClient,
+					ep.Spec.GlobalConfig.SeverURL, nil)
 				if err != nil {
 					return err
 				}
@@ -191,4 +214,40 @@ func remove(list []string, s string) []string {
 		}
 	}
 	return result
+}
+
+func createOCPClient() (ocpClientSet.Interface, error) {
+	// create the config from the path
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		log.Error(err, "Failed to create the config")
+		return nil, err
+	}
+
+	// generate the client based off of the config
+	ocpClient, err := ocpClientSet.NewForConfig(config)
+	if err != nil {
+		log.Error(err, "Failed to create ocp config client")
+		return nil, err
+	}
+
+	return ocpClient, err
+}
+
+func createKubeClient() (kubernetes.Interface, error) {
+	// create the config from the path
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		log.Error(err, "Failed to create the config")
+		return nil, err
+	}
+
+	// generate the client based off of the config
+	kubeClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Error(err, "Failed to create kube client")
+		return nil, err
+	}
+
+	return kubeClient, err
 }
