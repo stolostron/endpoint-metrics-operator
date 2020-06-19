@@ -5,8 +5,10 @@ package endpointmonitoring
 import (
 	"context"
 
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -18,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
 const (
@@ -121,15 +122,22 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
+	// Create OCP client
+	ocpClient, err := createOCPClient()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// Init finalizers
-	err = r.initFinalization(instance)
+	err = r.initFinalization(ocpClient, instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	for _, collector := range instance.Spec.MetricsCollectorList {
 		if collector.Type == "OCP_PROMETHEUS" {
-			err = util.UpdateClusterMonitoringConfig(instance.Spec.GlobalConfig.SeverURL, &collector.RelabelConfigs)
+			err = updateClusterMonitoringConfig(r.client, ocpClient,
+				instance.Spec.GlobalConfig.SeverURL, &collector.RelabelConfigs)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -141,12 +149,13 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileEndpointMonitoring) initFinalization(ep *monitoringv1alpha1.EndpointMonitoring) error {
+func (r *ReconcileEndpointMonitoring) initFinalization(
+	ocpClient ocpClientSet.Interface, ep *monitoringv1alpha1.EndpointMonitoring) error {
 	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
 		for _, collector := range ep.Spec.MetricsCollectorList {
 			if collector.Type == "OCP_PROMETHEUS" {
-				err := util.UpdateClusterMonitoringConfig(ep.Spec.GlobalConfig.SeverURL, nil)
+				err := updateClusterMonitoringConfig(r.client, ocpClient, ep.Spec.GlobalConfig.SeverURL, nil)
 				if err != nil {
 					return err
 				}
@@ -191,4 +200,22 @@ func remove(list []string, s string) []string {
 		}
 	}
 	return result
+}
+
+func createOCPClient() (ocpClientSet.Interface, error) {
+	// create the config from the path
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		log.Error(err, "Failed to create the config")
+		return nil, err
+	}
+
+	// generate the client based off of the config
+	ocpClient, err := ocpClientSet.NewForConfig(config)
+	if err != nil {
+		log.Error(err, "Failed to create ocp config client")
+		return nil, err
+	}
+
+	return ocpClient, err
 }
