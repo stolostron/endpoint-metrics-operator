@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
+	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	kubefakeclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -48,9 +50,18 @@ func TestEndpointMonitoringController(t *testing.T) {
 
 	ep := newEndpoint()
 	objs := []runtime.Object{ep}
+
+	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
+	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
+
 	s.AddKnownTypes(monitoringv1alpha1.SchemeGroupVersion, ep)
 	c := fake.NewFakeClient(objs...)
-	r := &ReconcileEndpointMonitoring{client: c, scheme: s}
+	r := &ReconcileEndpointMonitoring{
+		client:     c,
+		scheme:     s,
+		kubeClient: kubeClient,
+		ocpClient:  ocpClient,
+	}
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
@@ -63,7 +74,12 @@ func TestEndpointMonitoringController(t *testing.T) {
 	}
 
 	c = fake.NewFakeClient()
-	r = &ReconcileEndpointMonitoring{client: c, scheme: s}
+	r = &ReconcileEndpointMonitoring{
+		client:     c,
+		scheme:     s,
+		kubeClient: kubeClient,
+		ocpClient:  ocpClient,
+	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
@@ -77,7 +93,12 @@ func TestEndpointMonitoringController(t *testing.T) {
 
 	ep.Spec.MetricsCollectorList[0].Type = "OCP_PROMETHEUS"
 	c = fake.NewFakeClient(objs...)
-	r = &ReconcileEndpointMonitoring{client: c, scheme: s}
+	r = &ReconcileEndpointMonitoring{
+		client:     c,
+		scheme:     s,
+		kubeClient: kubeClient,
+		ocpClient:  ocpClient,
+	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
@@ -105,7 +126,14 @@ func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
 	objs := []runtime.Object{ep}
 	s.AddKnownTypes(monitoringv1alpha1.SchemeGroupVersion, ep)
 	c := fake.NewFakeClient(objs...)
-	r := &ReconcileEndpointMonitoring{client: c, scheme: s}
+	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
+	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
+	r := &ReconcileEndpointMonitoring{
+		client:     c,
+		scheme:     s,
+		kubeClient: kubeClient,
+		ocpClient:  ocpClient,
+	}
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
@@ -119,7 +147,12 @@ func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
 
 	ep.Spec.MetricsCollectorList[0].Type = "OCP_PROMETHEUS"
 	c = fake.NewFakeClient(objs...)
-	r = &ReconcileEndpointMonitoring{client: c, scheme: s}
+	r = &ReconcileEndpointMonitoring{
+		client:     c,
+		scheme:     s,
+		kubeClient: kubeClient,
+		ocpClient:  ocpClient,
+	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
