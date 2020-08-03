@@ -21,17 +21,15 @@ metricsConfigs| Metrics collection configurations | yes | n/a | MetricsConfigs
 
 name | description | required | default | schema
 ---- | ----------- | -------- | ------- | ------
-interval | Interval to collect&push metrics | yes | 1m | string
+interval | Interval for the metrics collector push metrics to  hub server| yes | 1m | string
 
 
 **EndpointObservability Status**: describe the status for current CR. It's updated by the metrics collector
 
 name | description | required | default | schema
 ---- | ----------- | -------- | ------- | ------
-metricsCollectionStatus | Collect/Push metrics successfully or not | no | true | bool
-metricsCollectionError | Error encounted during metrics collect/push | no | n/a | string
-logsCollectionStatus | Collect/Push logs successfully or not | no | true | bool
-logsCollectionError | Error encounted during logs collect/push | no | n/a | string
+conditions | Conditions contains the different condition statuses for this managed cluster | no | [] | []Condtions
+
 
 ### Samples
 
