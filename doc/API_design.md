@@ -6,7 +6,7 @@ The requirement doc is located in [here](https://docs.google.com/document/d/1qaw
 
 EndpointObservability CR is namespace scoped and located in each cluster namespace in hub side if monitoring feature is enabled for that managed cluster. Hub operator will generate the default one in the cluster namespace and users can customize it later. One CR includes two sections: one for spec and the other for status.
 
-Group of this CR is observability.open-cluster-management.io, version is v1, kind is EndpointObservability
+Group of this CR is observability.open-cluster-management.io, version is v1alpha1, kind is EndpointObservability
 
 **EndpointObservability** Spec: describe the specification and status for the metrics collector in one managed cluster
 
@@ -46,7 +46,7 @@ type | Type of node condition | yes | n/a | string
 Here is a sample EndpointObservability CR
 
 ```
-apiVersion: monitoring.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: EndpointObservability
 metadata:
   name: sample-endpointmonitoring
