@@ -56,7 +56,7 @@ type | Type of node condition | yes | n/a | string
 Here is a sample EndpointObservability CR
 
 ```
-apiVersion: monitoring.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: EndpointObservability
 metadata:
   name: sample-endpointmonitoring
