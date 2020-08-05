@@ -6,40 +6,38 @@ The requirement doc is located in [here](https://docs.google.com/document/d/1qaw
 
 ObservabilityAddon CR is namespace scoped and located in each cluster namespace in hub side if monitoring feature is enabled for that managed cluster. Hub operator will generate the default one in the cluster namespace and users can customize it later. One CR includes two sections: one for spec and the other for status.
 
-Group of this CR is observability.open-cluster-management.io, version is v1beta1alpha1, kind is ObservabilityAddon
+Group of this CR is observability.open-cluster-management.io
 
-**ObservabilityAddon** Spec: describe the specification and status for the metrics collector in one managed cluster
+version is v1beta1
 
-name | description | required | default | schema
----- | ----------- | -------- | ------- | ------
-enableMetrics | Push metrics or not | yes | true | bool
-metricsConfigs| Metrics collection configurations | yes | n/a | MetricsConfigs
+kind is ObservabilityAddon
 
-
-**MetricsConfigs Spec**: describe the specification for metrics collected  from local prometheus and pushed to hub server
+**ObservabilityAddon Spec**: the specification and status for the metrics collector in one managed cluster
 
 name | description | required | default | schema
 ---- | ----------- | -------- | ------- | ------
-interval | Interval for the metrics collector push metrics to  hub server| yes | 1m | string
+enableMetrics | Push metrics or not | no | true | bool
+metricsConfigs| Metrics collection configurations | no | n/a | MetricsConfigs
 
 
-**ObservabilityAddon Status**: describe the status for current CR. It's updated by the metrics collector
-
-name | description | required | default | schema
----- | ----------- | -------- | ------- | ------
-conditions | Conditions contains the different condition statuses for this managed cluster | no | [] | []Condtions
-
-**Condition**: describe the condition status for current CR.
+**MetricsConfigs Spec**: the specification for metrics collected  from local prometheus and pushed to hub server
 
 name | description | required | default | schema
 ---- | ----------- | -------- | ------- | ------
-lastTransitionTime | Last time the condition transit from one status to another | yes | n/a | Time
-status | Status of the condition, one of True, False, Unknown | yes | n/a | string
-reason | (brief) reason for the condition's last transition | yes | n/a | string
-message | Human readable message indicating details about last transition | yes | n/a | string
-type | Type of node condition | yes | n/a | string
+interval | Interval for the metrics collector push metrics to  hub server| no | 1m | string
 
 
+**ObservabilityAddon Status**: the status for current CR. It's updated by the metrics collector
+
+name | description | required | default | schema
+---- | ----------- | -------- | ------- | ------
+status | Status contains the different condition statuses for this managed cluster | n/a | [] | []Condtions
+
+**Conditions**
+type | reason | message
+---- | ------ | -------
+Ready | Deployed | Metrics collector deployed and functional
+Disabled | Disabled | enableMetrics is set to False
 
 ### Samples
 
@@ -56,9 +54,14 @@ spec:
     interval: 1m
 status:
   conditions:
-    - type: Available
+    - type: Ready
       status: 'True'
       lastTransitionTime: '2020-07-23T16:18:46Z'
-      reason: ClientCreated
-      message: The metrics collector client deployment created
+      reason: Deployed
+      message: Metrics collector deployed and functional
+    - type: Disabled
+      status: 'True'
+      lastTransitionTime: '2020-07-23T15:18:46Z'
+      reason: Disabled
+      message: enableMetrics is set to False
 ```
