@@ -1,7 +1,3 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
-
-ARG VCS_REF
-ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG IMAGE_DISPLAY_NAME
@@ -31,8 +27,7 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.k8s.description="$IMAGE_DESCRIPTION" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
-RUN microdnf install ca-certificates vi --nodocs &&\
-    microdnf clean all
+RUN microdnf update
 
 ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_UID=1001 \
