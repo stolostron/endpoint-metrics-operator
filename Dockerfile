@@ -37,7 +37,7 @@ RUN microdnf install ca-certificates vi --nodocs &&\
 
 ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_UID=1001 \
-    USER_NAME=endpoint-monitoring-operator 
+    USER_NAME=endpoint-monitoring-operator
 
 # install operator binary
 COPY build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
