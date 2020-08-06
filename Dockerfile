@@ -31,8 +31,8 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.k8s.description="$IMAGE_DESCRIPTION" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
-RUN microdnf install ca-certificates vi --nodocs &&\ 
-    mkdir /licenses &&\ 
+RUN microdnf install ca-certificates vi --nodocs &&\
+    mkdir /licenses &&\
     microdnf clean all
 
 ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
