@@ -19,7 +19,7 @@ LABEL org.label-schema.vendor="Red Hat" \
     org.label-schema.vcs-ref=$VCS_REF \
     org.label-schema.vcs-url=$VCS_URL \
     org.label-schema.license="Red Hat Advanced Cluster Management for Kubernetes EULA" \
-    org.label-schema.schema-version="1.0" \
+    org.label-schema.schema-version="2.1" \
     name="$IMAGE_NAME" \
     maintainer="$IMAGE_MAINTAINER" \
     vendor="$IMAGE_VENDOR" \
@@ -31,9 +31,13 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.k8s.description="$IMAGE_DESCRIPTION" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
+RUN microdnf install ca-certificates vi --nodocs &&\ 
+    mkdir /licenses &&\ 
+    microdnf clean all
+
 ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_UID=1001 \
-    USER_NAME=endpoint-monitoring-operator
+    USER_NAME=endpoint-monitoring-operator 
 
 # install operator binary
 COPY build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
