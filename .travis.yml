@@ -58,7 +58,7 @@ jobs:
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         # Bootstrap the build harness, pull test image, and run unit tests.  
         - |
-          oc
+          oc version
     - stage: build
       name: "Build the test image and push it"
       script:
