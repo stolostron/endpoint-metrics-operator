@@ -1,0 +1,10 @@
+apiVersion: observability.open-cluster-management.io/v1beta1
+kind: ObservabilityAddon
+metadata:
+  name: observability-addon
+  annotations:
+    owner: multicluster-operator
+spec:
+  enableMetrics: true
+  metricsConfigs:
+    interval: 1m

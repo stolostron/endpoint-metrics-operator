@@ -4,10 +4,13 @@ package endpointmonitoring
 
 import (
 	"context"
+	"os"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,24 +23,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
-	epConfigName    = "endpoint-config"
+	hubSecretName   = "hub-endpoint-secret"
+	obAddonName     = "observability-addon"
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-operator"
-	epFinalizer     = "monitoring.open-cluster-management.io/endpoint-monitoring-cleanup"
+	epFinalizer     = "observability.open-cluster-management.io/addon-cleanup"
 )
 
-var log = logf.Log.WithName("controller_endpointmonitoring")
+var (
+	namespace = os.Getenv("NAMESPACE")
+	log       = logf.Log.WithName("controller_observabilityaddon")
+)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new EndpointMonitoring Controller and adds it to the Manager.
+// Add creates a new ObservabilityAddon Controller and adds it to the Manager.
 // The Manager will set fields on the Controller and Start it when the Manager
 // is Started.
 func Add(mgr manager.Manager) error {
@@ -58,7 +65,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		log.Error(err, "Failed to create the OpenShift client")
 		return nil
 	}
-	return &ReconcileEndpointMonitoring{
+	return &ReconcileObservabilityAddon{
 		client:     mgr.GetClient(),
 		kubeClient: kubeClient,
 		ocpClient:  ocpClient,
@@ -75,27 +82,27 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == epConfigName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.MetaNew.GetName() == obAddonName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
 				return !e.DeleteStateUnknown
 			}
 			return false
 		},
 	}
 
-	// Watch for changes to primary resource EndpointMonitoring
-	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.EndpointMonitoring{}}, &handler.EnqueueRequestForObject{}, pred)
+	// Watch for changes to primary resource ObservabilityAddon
+	err = c.Watch(&source.Kind{Type: &oav1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
 	}
@@ -103,11 +110,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileEndpointMonitoring implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileEndpointMonitoring{}
+// blank assignment to verify that ReconcileObservabilityAddon implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcileObservabilityAddon{}
 
-// ReconcileEndpointMonitoring reconciles a EndpointMonitoring object
-type ReconcileEndpointMonitoring struct {
+// ReconcileObservabilityAddon reconciles a ObservabilityAddon object
+type ReconcileObservabilityAddon struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client     client.Client
@@ -116,19 +123,19 @@ type ReconcileEndpointMonitoring struct {
 	ocpClient  ocpClientSet.Interface
 }
 
-// Reconcile reads that state of the cluster for a EndpointMonitoring object and makes changes based on the state read
-// and what is in the EndpointMonitoring.Spec
+// Reconcile reads that state of the cluster for a ObservabilityAddon object and makes changes based on the state read
+// and what is in the ObservabilityAddon.Spec
 // Modify this Reconcile function to implement your Controller logic.  This example creates
 // a Pod as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling EndpointMonitoring")
+	reqLogger.Info("Reconciling ObservabilityAddon")
 
-	// Fetch the EndpointMonitoring instance
-	instance := &monitoringv1alpha1.EndpointMonitoring{}
+	// Fetch the ObservabilityAddon instance
+	instance := &oav1beta1.ObservabilityAddon{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -147,38 +154,42 @@ func (r *ReconcileEndpointMonitoring) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
-	for _, collector := range instance.Spec.MetricsCollectorList {
-		if collector.Type == "OCP_PROMETHEUS" {
-			err = updateClusterMonitoringConfig(r.kubeClient, r.ocpClient,
-				instance.Spec.GlobalConfig.SeverURL, &collector.RelabelConfigs)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		} else {
-			reqLogger.Info("Unsupported collector", "type", collector.Type)
+	hubSecret := &corev1.Secret{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubSecretName, Namespace: request.Namespace}, hubSecret)
+	if err != nil {
+		reqLogger.Error(err, "Failed to get hub secret")
+		return reconcile.Result{}, err
+	}
+	clusterID, err := getClusterID(r.ocpClient)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if instance.Spec.EnableMetrics {
+		err = createMonitoringClusterRoleBinding(r.kubeClient)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
+		err = createCAConfigmap(r.kubeClient)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileEndpointMonitoring) initFinalization(
-	ep *monitoringv1alpha1.EndpointMonitoring) error {
+func (r *ReconcileObservabilityAddon) initFinalization(
+	ep *oav1beta1.ObservabilityAddon) error {
 	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
-		for _, collector := range ep.Spec.MetricsCollectorList {
-			if collector.Type == "OCP_PROMETHEUS" {
-				err := updateClusterMonitoringConfig(r.kubeClient, r.ocpClient,
-					ep.Spec.GlobalConfig.SeverURL, nil)
-				if err != nil {
-					return err
-				}
-			} else {
-				log.Info("Unsupported collector", "type", collector.Type)
-			}
+		err := deleteMetricsCollector(r.kubeClient)
+		if err != nil {
+			return err
 		}
 		ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
-		err := r.client.Update(context.TODO(), ep)
+		err = r.client.Update(context.TODO(), ep)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
 			return err

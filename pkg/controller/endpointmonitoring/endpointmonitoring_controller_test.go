@@ -16,23 +16,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
-	name      = "endpoint-config"
+	name      = "observability-addon"
 	namespace = "test-ns"
 )
 
-func newEndpoint() *monitoringv1alpha1.EndpointMonitoring {
-	return &monitoringv1alpha1.EndpointMonitoring{
+func newEndpoint() *oav1beta1.EndpointMonitoring {
+	return &oav1beta1.EndpointMonitoring{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: monitoringv1alpha1.EndpointMonitoringSpec{
-			GlobalConfig: monitoringv1alpha1.GlobalConfigSpec{},
-			MetricsCollectorList: []monitoringv1alpha1.MetricsCollectorSpec{
+		Spec: oav1beta1.EndpointMonitoringSpec{
+			GlobalConfig: oav1beta1.GlobalConfigSpec{},
+			MetricsCollectorList: []oav1beta1.MetricsCollectorSpec{
 				{
 					Enable: true,
 				},
@@ -45,7 +45,7 @@ func TestEndpointMonitoringController(t *testing.T) {
 
 	s := scheme.Scheme
 	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add monitoringv1alpha1 scheme: (%v)", err)
+		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
 	ep := newEndpoint()
@@ -54,7 +54,7 @@ func TestEndpointMonitoringController(t *testing.T) {
 	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
 	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
 
-	s.AddKnownTypes(monitoringv1alpha1.SchemeGroupVersion, ep)
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, ep)
 	c := fake.NewFakeClient(objs...)
 	r := &ReconcileEndpointMonitoring{
 		client:     c,
@@ -116,7 +116,7 @@ func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
 	s := scheme.Scheme
 
 	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add monitoringv1alpha1 scheme: (%v)", err)
+		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
 	ep := newEndpoint()
@@ -124,7 +124,7 @@ func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
 	ep.ObjectMeta.Finalizers = []string{epFinalizer, "test-finalizerr"}
 
 	objs := []runtime.Object{ep}
-	s.AddKnownTypes(monitoringv1alpha1.SchemeGroupVersion, ep)
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, ep)
 	c := fake.NewFakeClient(objs...)
 	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
 	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
