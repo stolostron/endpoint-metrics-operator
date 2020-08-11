@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	hubSecretName   = "hub-endpoint-secret"
+	hubConfigName   = "hub-info-secret"
 	obAddonName     = "observability-addon"
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-operator"
@@ -155,7 +155,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 
 	hubSecret := &corev1.Secret{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubSecretName, Namespace: request.Namespace}, hubSecret)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
 	if err != nil {
 		reqLogger.Error(err, "Failed to get hub secret")
 		return reconcile.Result{}, err
@@ -174,7 +174,10 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
+		err = createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	return reconcile.Result{}, nil
