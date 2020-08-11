@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package endpointmonitoring
+package observabilityendpoint
 
 import (
 	"os"
@@ -196,9 +196,8 @@ func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret, clu
 			if err != nil {
 				log.Error(err, "Failed to create metrics-collector deployment")
 				return err
-			} else {
-				log.Info("Created metrics-collector deployment ")
 			}
+			log.Info("Created metrics-collector deployment ")
 		} else {
 			log.Error(err, "Failed to get the metrics-collector deployment")
 			return err
@@ -210,16 +209,24 @@ func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret, clu
 			if err != nil {
 				log.Error(err, "Failed to update metrics-collector deployment")
 				return err
-			} else {
-				log.Info("Updated metrics-collector deployment ")
 			}
+			log.Info("Updated metrics-collector deployment ")
 		}
 	}
 	return nil
 }
 
 func deleteMetricsCollector(client kubernetes.Interface) error {
-	err := client.AppsV1().Deployments(namespace).Delete(metricsCollectorName, &metav1.DeleteOptions{})
+	_, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector deployment does not exist")
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector deployment")
+		return err
+	}
+	err = client.AppsV1().Deployments(namespace).Delete(metricsCollectorName, &metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, "Failed to delete the metrics collector deployment")
 	}

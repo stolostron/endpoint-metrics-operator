@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package endpointmonitoring
+package observabilityendpoint
 
 import (
 	"testing"
@@ -20,43 +20,41 @@ import (
 )
 
 const (
-	name      = "observability-addon"
-	namespace = "test-ns"
+	name          = "observability-addon"
+	testNamespace = "test-ns"
 )
 
-func newEndpoint() *oav1beta1.EndpointMonitoring {
-	return &oav1beta1.EndpointMonitoring{
+func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
+	return &oav1beta1.ObservabilityAddon{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
-		Spec: oav1beta1.EndpointMonitoringSpec{
-			GlobalConfig: oav1beta1.GlobalConfigSpec{},
-			MetricsCollectorList: []oav1beta1.MetricsCollectorSpec{
-				{
-					Enable: true,
-				},
+		Spec: oav1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			MetricsConfigs: oav1beta1.MetricsConfigsSpec{
+				Interval: "1m",
 			},
 		},
 	}
 }
 
-func TestEndpointMonitoringController(t *testing.T) {
+func TestObservabilityAddonController(t *testing.T) {
 
 	s := scheme.Scheme
 	if err := apis.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
-	ep := newEndpoint()
-	objs := []runtime.Object{ep}
+	oa := newObservabilityAddon()
+	objs := []runtime.Object{oa, hubInfo}
 
 	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
-	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
+	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
 
-	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, ep)
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
 	c := fake.NewFakeClient(objs...)
-	r := &ReconcileEndpointMonitoring{
+	r := &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -74,7 +72,7 @@ func TestEndpointMonitoringController(t *testing.T) {
 	}
 
 	c = fake.NewFakeClient()
-	r = &ReconcileEndpointMonitoring{
+	r = &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -83,7 +81,7 @@ func TestEndpointMonitoringController(t *testing.T) {
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 	}
 	_, err = r.Reconcile(req)
@@ -91,9 +89,9 @@ func TestEndpointMonitoringController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	ep.Spec.MetricsCollectorList[0].Type = "OCP_PROMETHEUS"
+	oa.Spec.EnableMetrics = false
 	c = fake.NewFakeClient(objs...)
-	r = &ReconcileEndpointMonitoring{
+	r = &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -102,16 +100,16 @@ func TestEndpointMonitoringController(t *testing.T) {
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 	}
 	_, err = r.Reconcile(req)
-	if err == nil {
-		t.Fatalf("Desied errors not found")
+	if err != nil {
+		t.Fatalf("2nd reconcile: (%v)", err)
 	}
 }
 
-func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
+func TestObservabilityAddonControllerFinalizer(t *testing.T) {
 
 	s := scheme.Scheme
 
@@ -119,16 +117,16 @@ func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
 		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
-	ep := newEndpoint()
-	ep.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
-	ep.ObjectMeta.Finalizers = []string{epFinalizer, "test-finalizerr"}
+	oa := newObservabilityAddon()
+	oa.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
+	oa.ObjectMeta.Finalizers = []string{epFinalizer, "test-finalizerr"}
 
-	objs := []runtime.Object{ep}
-	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, ep)
+	objs := []runtime.Object{oa, hubInfo}
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
 	c := fake.NewFakeClient(objs...)
 	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
-	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
-	r := &ReconcileEndpointMonitoring{
+	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
+	r := &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -137,30 +135,11 @@ func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 	}
 	_, err := r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
-	}
-
-	ep.Spec.MetricsCollectorList[0].Type = "OCP_PROMETHEUS"
-	c = fake.NewFakeClient(objs...)
-	r = &ReconcileEndpointMonitoring{
-		client:     c,
-		scheme:     s,
-		kubeClient: kubeClient,
-		ocpClient:  ocpClient,
-	}
-	req = reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      name,
-			Namespace: namespace,
-		},
-	}
-	_, err = r.Reconcile(req)
-	if err == nil {
-		t.Fatalf("Desied errors not found")
 	}
 }

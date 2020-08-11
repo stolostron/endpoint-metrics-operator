@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package endpointmonitoring
+package observabilityendpoint
 
 import (
 	"context"
@@ -175,6 +175,11 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 		err = createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	} else {
+		err := deleteMetricsCollector(r.kubeClient)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

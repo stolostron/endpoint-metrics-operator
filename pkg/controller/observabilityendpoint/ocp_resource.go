@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package endpointmonitoring
+package observabilityendpoint
 
 import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
