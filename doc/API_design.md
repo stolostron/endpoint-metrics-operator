@@ -38,6 +38,7 @@ type | reason | message
 ---- | ------ | -------
 Ready | Deployed | Metrics collector deployed and functional
 Disabled | Disabled | enableMetrics is set to False
+NotSupported | NotSupported | Observability is not supported in this cluster
 
 ### Samples
 
