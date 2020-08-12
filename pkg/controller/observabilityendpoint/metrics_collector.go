@@ -20,6 +20,8 @@ import (
 const (
 	hubInfoKey           = "hub-info.yaml"
 	metricsCollectorName = "metrics-collector-deployment"
+	selectorKey          = "component"
+	selectorValue        = "metrics-collector"
 	ocpPromURL           = "https://prometheus-k8s.openshift-monitoring.svc:9091"
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
@@ -97,7 +99,8 @@ type HubInfo struct {
 	Endpoint    string `yaml:"endpoint"`
 }
 
-func createDeployment(clusterName string, clusterID string, endpoint string, configs oav1beta1.MetricsConfigsSpec) *appv1.Deployment {
+func createDeployment(clusterName string, clusterID string, endpoint string,
+	configs oav1beta1.MetricsConfigsSpec) *appv1.Deployment {
 	interval := configs.Interval
 	commands := []string{
 		"/usr/bin/telemeter-client",
@@ -126,13 +129,13 @@ func createDeployment(clusterName string, clusterID string, endpoint string, con
 			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"component": "metrics-collector",
+					selectorKey: selectorValue,
 				},
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"component": "metrics-collector",
+						selectorKey: selectorValue,
 					},
 				},
 				Spec: v1.PodSpec{
@@ -181,7 +184,8 @@ func createDeployment(clusterName string, clusterID string, endpoint string, con
 	}
 }
 
-func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret, clusterID string, configs oav1beta1.MetricsConfigsSpec) error {
+func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
+	clusterID string, configs oav1beta1.MetricsConfigsSpec) error {
 	hub := &HubInfo{}
 	err := yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
 	if err != nil {
