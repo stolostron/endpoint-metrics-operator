@@ -5,10 +5,12 @@ package observabilityendpoint
 import (
 	"context"
 	"os"
+	"time"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -162,6 +164,19 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 	clusterID, err := getClusterID(r.ocpClient)
 	if err != nil {
+		instance.Status.Conditions = []oav1beta1.StatusCondition{
+			{
+				Type:               "NotSupported",
+				Status:             metav1.ConditionTrue,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+				Reason:             "NotSupported",
+				Message:            "Observability is not supported in this cluster",
+			},
+		}
+		err = r.client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			log.Error(err, "Failed to update status for observabilityaddon")
+		}
 		return reconcile.Result{}, err
 	}
 
@@ -174,17 +189,46 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		err = createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
+		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
 		if err != nil {
 			return reconcile.Result{}, err
+		}
+		if created {
+			instance.Status.Conditions = []oav1beta1.StatusCondition{
+				{
+					Type:               "Ready",
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Now()),
+					Reason:             "Deployed",
+					Message:            "Metrics collector deployed and functional",
+				},
+			}
+			err = r.client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log.Error(err, "Failed to update status for observabilityaddon")
+			}
 		}
 	} else {
-		err := deleteMetricsCollector(r.kubeClient)
+		deleted, err := deleteMetricsCollector(r.kubeClient)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		if deleted {
+			instance.Status.Conditions = []oav1beta1.StatusCondition{
+				{
+					Type:               "Disabled",
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Now()),
+					Reason:             "Disabled",
+					Message:            "enableMetrics is set to False",
+				},
+			}
+			err = r.client.Status().Update(context.TODO(), instance)
+			if err != nil {
+				log.Error(err, "Failed to update status for observabilityaddon")
+			}
+		}
 	}
-
 	return reconcile.Result{}, nil
 }
 
@@ -192,7 +236,7 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 	ep *oav1beta1.ObservabilityAddon) error {
 	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
-		err := deleteMetricsCollector(r.kubeClient)
+		_, err := deleteMetricsCollector(r.kubeClient)
 		if err != nil {
 			return err
 		}

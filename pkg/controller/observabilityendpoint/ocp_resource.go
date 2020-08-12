@@ -48,10 +48,9 @@ func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 				log.Error(err, "Failed to create the clusterrolebinding")
 			}
 			return err
-		} else {
-			log.Error(err, "Failed to check the clusterrolebinding")
-			return err
 		}
+		log.Error(err, "Failed to check the clusterrolebinding")
+		return err
 	} else {
 		log.Info("The clusterrolebinding already existed")
 	}
