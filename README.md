@@ -30,13 +30,35 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 - `export GOPRIVATE=github.com/open-cluster-management`
 - `go mod vendor`
 - `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/endpoint-monitoring-operator:v0.1.0.
-- Update the image in `deploy/operator.yaml`.
-- Update your namespace in `deploy/role_binding.yaml`
-- Update the spec.global.serverUrl in `deploy/crds/monitoring.open-cluster-management.io_v1_endpointmonitoring_cr.yaml`. This is the observatorium api gateway url which exposed on hub cluster, such as observatorium-api-gateway-acm-monitoring.apps.calm-midge.dev05.red-chesterfield.com
+- push the image to the repo
+
 
 ### Deploy this Operator
 
-1. Apply the manifests
+1. Prerequisite
+- Update the image in `deploy/operator.yaml`, to use the image built out in above step.
+- Update the value of env COLLECTOR_IMAGE in `deploy/operator.yaml`, for example: quay.io/open-cluster-management/metrics-collector:2.1.0-PR6-1b7cdb7b33bd9baed230a367465ec7238204648a.
+- Update your namespace in `deploy/role_binding.yaml`.
+- Create the secret hub-info-secret.
+```
+kind: Secret
+apiVersion: v1
+metadata:
+  name: hub-info-secret
+data:
+    hub-info.yaml: ***
+type: Opaque
+``` 
+for the content of hub-info.yaml, it's base64-encoded yaml. The original yaml content is like below.
+```
+{
+  "cluster-name": "my_cluster",
+  "endpoint": "http://test-open-cluster-management-monitoring.apps.marco.dev05.red-chesterfield.com/api/metrics/v1/write"
+}
+```
+**cluster-name** is the name for your cluster, you can set any non-empty string for it. **endpoint** is the observatorium api gateway url which exposed on hub cluster 
+
+2. Apply the manifests
 ```
 kubectl apply -f deploy/crds/
 kubectl apply -f deploy/
@@ -47,18 +69,14 @@ After installed successfully, you will see the following output:
 ```
 NAME                                         READY   STATUS    RESTARTS   AGE
 endpoint-monitoring-operator-68fbdbc66d-wm6rq   1/1     Running   0          46h
+metrics-collector-deployment-57d84fcf9b-tnsd4   1/1     Running   0          46h
 ```
-`oc get endpointmonitoring`
+`oc get observabilityaddon`
 ```
 NAME                      AGE
-example-endpointmonitoring   46h
+observability-addon   46h
 ```
-**Notice**: To deploy the endpointmonitoring CR in local spoke cluster just for dev/test purpose. In real topology, the endpointmonitoring CR should be created in hub cluster, the endpoint-monitoring-operator should talk to api server of hub cluster to watch those CRs, and then perform changes on spoke cluster. 
-
-2. The endpoint monitoring operator will create/update the configmap cluster-monitoring-config in openshift-monitoring namespace, based on the related info defined in the EndpointMoitoring CR. The changes will be applied automatically after several minutes. You can apply the changes immediately by invoking command below
-```
-oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --replicas=1 deployment --all -n openshift-monitoring
-```
+**Notice**: To deploy the observabilityaddon CR in local managed cluster just for dev/test purpose. In real topology, the observabilityaddon CR will be created in hub cluster, the endpoint-monitoring-operator should talk to api server of hub cluster to watch those CRs, and then perform changes on managed cluster. 
 
 ### View metrics in dashboard
 Access Grafana console in hub cluster at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"

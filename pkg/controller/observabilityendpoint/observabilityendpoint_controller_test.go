@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package endpointmonitoring
+package observabilityendpoint
 
 import (
 	"testing"
@@ -16,47 +16,45 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
-	name      = "endpoint-config"
-	namespace = "test-ns"
+	name          = "observability-addon"
+	testNamespace = "test-ns"
 )
 
-func newEndpoint() *monitoringv1alpha1.EndpointMonitoring {
-	return &monitoringv1alpha1.EndpointMonitoring{
+func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
+	return &oav1beta1.ObservabilityAddon{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
-		Spec: monitoringv1alpha1.EndpointMonitoringSpec{
-			GlobalConfig: monitoringv1alpha1.GlobalConfigSpec{},
-			MetricsCollectorList: []monitoringv1alpha1.MetricsCollectorSpec{
-				{
-					Enable: true,
-				},
+		Spec: oav1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			MetricsConfigs: oav1beta1.MetricsConfigsSpec{
+				Interval: "1m",
 			},
 		},
 	}
 }
 
-func TestEndpointMonitoringController(t *testing.T) {
+func TestObservabilityAddonController(t *testing.T) {
 
 	s := scheme.Scheme
 	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add monitoringv1alpha1 scheme: (%v)", err)
+		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
-	ep := newEndpoint()
-	objs := []runtime.Object{ep}
+	oa := newObservabilityAddon()
+	objs := []runtime.Object{oa, hubInfo}
 
 	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
-	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
+	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
 
-	s.AddKnownTypes(monitoringv1alpha1.SchemeGroupVersion, ep)
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
 	c := fake.NewFakeClient(objs...)
-	r := &ReconcileEndpointMonitoring{
+	r := &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -74,7 +72,7 @@ func TestEndpointMonitoringController(t *testing.T) {
 	}
 
 	c = fake.NewFakeClient()
-	r = &ReconcileEndpointMonitoring{
+	r = &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -83,7 +81,7 @@ func TestEndpointMonitoringController(t *testing.T) {
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 	}
 	_, err = r.Reconcile(req)
@@ -91,9 +89,9 @@ func TestEndpointMonitoringController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	ep.Spec.MetricsCollectorList[0].Type = "OCP_PROMETHEUS"
+	oa.Spec.EnableMetrics = false
 	c = fake.NewFakeClient(objs...)
-	r = &ReconcileEndpointMonitoring{
+	r = &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -102,33 +100,33 @@ func TestEndpointMonitoringController(t *testing.T) {
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 	}
 	_, err = r.Reconcile(req)
-	if err == nil {
-		t.Fatalf("Desied errors not found")
+	if err != nil {
+		t.Fatalf("2nd reconcile: (%v)", err)
 	}
 }
 
-func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
+func TestObservabilityAddonControllerFinalizer(t *testing.T) {
 
 	s := scheme.Scheme
 
 	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add monitoringv1alpha1 scheme: (%v)", err)
+		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
-	ep := newEndpoint()
-	ep.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
-	ep.ObjectMeta.Finalizers = []string{epFinalizer, "test-finalizerr"}
+	oa := newObservabilityAddon()
+	oa.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
+	oa.ObjectMeta.Finalizers = []string{epFinalizer, "test-finalizerr"}
 
-	objs := []runtime.Object{ep}
-	s.AddKnownTypes(monitoringv1alpha1.SchemeGroupVersion, ep)
+	objs := []runtime.Object{oa, hubInfo}
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
 	c := fake.NewFakeClient(objs...)
 	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
-	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{}...)
-	r := &ReconcileEndpointMonitoring{
+	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
+	r := &ReconcileObservabilityAddon{
 		client:     c,
 		scheme:     s,
 		kubeClient: kubeClient,
@@ -137,30 +135,11 @@ func TestEndpointMonitoringControllerFinalizer(t *testing.T) {
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 	}
 	_, err := r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
-	}
-
-	ep.Spec.MetricsCollectorList[0].Type = "OCP_PROMETHEUS"
-	c = fake.NewFakeClient(objs...)
-	r = &ReconcileEndpointMonitoring{
-		client:     c,
-		scheme:     s,
-		kubeClient: kubeClient,
-		ocpClient:  ocpClient,
-	}
-	req = reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      name,
-			Namespace: namespace,
-		},
-	}
-	_, err = r.Reconcile(req)
-	if err == nil {
-		t.Fatalf("Desied errors not found")
 	}
 }

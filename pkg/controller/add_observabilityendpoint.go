@@ -3,10 +3,10 @@
 package controller
 
 import (
-	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/controller/endpointmonitoring"
+	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/controller/observabilityendpoint"
 )
 
 func init() {
 	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, endpointmonitoring.Add)
+	AddToManagerFuncs = append(AddToManagerFuncs, observabilityendpoint.Add)
 }
