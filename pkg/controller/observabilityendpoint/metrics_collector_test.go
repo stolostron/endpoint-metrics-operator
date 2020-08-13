@@ -37,16 +37,16 @@ func TestMetricsCollector(t *testing.T) {
 	configs := &oav1beta1.MetricsConfigsSpec{
 		Interval: "1m",
 	}
-	err := createMetricsCollector(kubeClient, hubInfo, testClusterID, *configs)
+	_, err := createMetricsCollector(kubeClient, hubInfo, testClusterID, *configs)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
-	err = createMetricsCollector(kubeClient, hubInfo, testClusterID+"-update", *configs)
+	_, err = createMetricsCollector(kubeClient, hubInfo, testClusterID+"-update", *configs)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	err = deleteMetricsCollector(kubeClient)
+	_, err = deleteMetricsCollector(kubeClient)
 	if err != nil {
 		t.Fatalf("Failed to delete metrics collector deployment: (%v)", err)
 	}

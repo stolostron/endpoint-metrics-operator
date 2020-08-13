@@ -185,12 +185,12 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 }
 
 func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
-	clusterID string, configs oav1beta1.MetricsConfigsSpec) error {
+	clusterID string, configs oav1beta1.MetricsConfigsSpec) (bool, error) {
 	hub := &HubInfo{}
 	err := yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal hub info")
-		return err
+		return false, err
 	}
 	deployment := createDeployment(hub.ClusterName, clusterID, hub.Endpoint, configs)
 	found, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
@@ -199,12 +199,12 @@ func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 			_, err = client.AppsV1().Deployments(namespace).Create(deployment)
 			if err != nil {
 				log.Error(err, "Failed to create metrics-collector deployment")
-				return err
+				return false, err
 			}
 			log.Info("Created metrics-collector deployment ")
 		} else {
 			log.Error(err, "Failed to get the metrics-collector deployment")
-			return err
+			return false, err
 		}
 	} else {
 		if !reflect.DeepEqual(found.Spec, deployment.Spec) {
@@ -212,29 +212,31 @@ func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 			_, err = client.AppsV1().Deployments(namespace).Update(deployment)
 			if err != nil {
 				log.Error(err, "Failed to update metrics-collector deployment")
-				return err
+				return false, err
 			}
 			log.Info("Updated metrics-collector deployment ")
+			return false, nil
 		}
 	}
-	return nil
+	return true, nil
 }
 
-func deleteMetricsCollector(client kubernetes.Interface) error {
+func deleteMetricsCollector(client kubernetes.Interface) (bool, error) {
 	_, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("The metrics collector deployment does not exist")
-			return nil
+			return false, nil
 		}
 		log.Error(err, "Failed to check the metrics collector deployment")
-		return err
+		return false, err
 	}
 	err = client.AppsV1().Deployments(namespace).Delete(metricsCollectorName, &metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, "Failed to delete the metrics collector deployment")
+		return false, err
 	}
-	return err
+	return true, nil
 }
 
 func int32Ptr(i int32) *int32 { return &i }

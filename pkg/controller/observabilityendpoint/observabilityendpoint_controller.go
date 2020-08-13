@@ -162,6 +162,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 	clusterID, err := getClusterID(r.ocpClient)
 	if err != nil {
+		reportStatus(r.client, instance, "NotSupported")
 		return reconcile.Result{}, err
 	}
 
@@ -174,17 +175,22 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		err = createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
+		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
 		if err != nil {
 			return reconcile.Result{}, err
+		}
+		if created {
+			reportStatus(r.client, instance, "Ready")
 		}
 	} else {
-		err := deleteMetricsCollector(r.kubeClient)
+		deleted, err := deleteMetricsCollector(r.kubeClient)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		if deleted {
+			reportStatus(r.client, instance, "Disabled")
+		}
 	}
-
 	return reconcile.Result{}, nil
 }
 
@@ -192,7 +198,7 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 	ep *oav1beta1.ObservabilityAddon) error {
 	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
-		err := deleteMetricsCollector(r.kubeClient)
+		_, err := deleteMetricsCollector(r.kubeClient)
 		if err != nil {
 			return err
 		}
