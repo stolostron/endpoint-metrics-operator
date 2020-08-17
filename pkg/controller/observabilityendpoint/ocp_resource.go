@@ -3,6 +3,8 @@
 package observabilityendpoint
 
 import (
+	"os"
+
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -14,6 +16,10 @@ import (
 const (
 	clusterRoleBindingName = "metrics-collector-view"
 	caConfigmapName        = "metrics-collector-serving-certs-ca-bundle"
+)
+
+var (
+	serviceAccountName = os.Getenv("COLLECTOR_IMAGE")
 )
 
 func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
@@ -36,7 +42,7 @@ func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 				Subjects: []rbacv1.Subject{
 					{
 						Kind:      "ServiceAccount",
-						Name:      "default",
+						Name:      serviceAccountName,
 						Namespace: namespace,
 					},
 				},

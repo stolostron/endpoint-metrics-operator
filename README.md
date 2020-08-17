@@ -39,6 +39,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 - Update the image in `deploy/operator.yaml`, to use the image built out in above step.
 - Update the value of env COLLECTOR_IMAGE in `deploy/operator.yaml`, for example: quay.io/open-cluster-management/metrics-collector:2.1.0-PR6-1b7cdb7b33bd9baed230a367465ec7238204648a.
 - Update your namespace in `deploy/role_binding.yaml`.
+- Create the pull secret that used to pull the images, and set it in `deploy/service_account.yaml`
 - Create the secret hub-info-secret.
 ```
 kind: Secret
@@ -53,7 +54,7 @@ for the content of hub-info.yaml, it's base64-encoded yaml. The original yaml co
 ```
 {
   "cluster-name": "my_cluster",
-  "endpoint": "http://test-open-cluster-management-monitoring.apps.marco.dev05.red-chesterfield.com/api/metrics/v1/write"
+  "endpoint": "http://observatorium-api-open-cluster-management-observability.apps.stage3.demo.red-chesterfield.com/api/v1/receive"
 }
 ```
 **cluster-name** is the name for your cluster, you can set any non-empty string for it. **endpoint** is the observatorium api gateway url which exposed on hub cluster 
