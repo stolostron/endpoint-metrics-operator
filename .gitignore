@@ -2,6 +2,9 @@
 build/_output
 build/_test
 vendor/
+.build-harness-bootstrap
+build-harness-extensions/
+build-harness/
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
 # -*- mode: gitignore; -*-

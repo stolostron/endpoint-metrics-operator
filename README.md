@@ -29,6 +29,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 - git clone this repository.
 - `export GOPRIVATE=github.com/open-cluster-management`
 - `go mod vendor`
+- `make docker-binary`
 - `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/endpoint-monitoring-operator:v0.1.0.
 - push the image to the repo
 
