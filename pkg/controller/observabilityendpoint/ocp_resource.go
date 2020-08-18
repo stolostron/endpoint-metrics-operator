@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	serviceAccountName = os.Getenv("COLLECTOR_IMAGE")
+	serviceAccountName = os.Getenv("SERVICE_ACCOUNT")
 )
 
 func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
