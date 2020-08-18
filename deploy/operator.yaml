@@ -33,6 +33,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
             - name: OPERATOR_NAME
               value: "endpoint-monitoring-operator"
             - name: COLLECTOR_IMAGE

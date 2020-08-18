@@ -139,6 +139,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 					},
 				},
 				Spec: v1.PodSpec{
+					ServiceAccountName: serviceAccountName,
 					Containers: []v1.Container{
 						{
 							Name:    "metrics-collector",
