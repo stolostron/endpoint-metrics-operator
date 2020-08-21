@@ -107,6 +107,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Watch for changes to primary resource ObservabilityAddon
+	err = c.Watch(&source.Kind{Type: &oav1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -154,6 +160,25 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
+	mcoInstance := &oav1beta1.MultiClusterObservability{}
+	err = r.client.Get(context.TODO(), request.NamespacedName, mcoInstance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	// Init finalizers
+	// err = r.initFinalization(mcoInstance)
+	// if err != nil {
+	// 	return reconcile.Result{}, err
+	// }
+
 	hubSecret := &corev1.Secret{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
 	if err != nil {
@@ -166,7 +191,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
-	if instance.Spec.EnableMetrics {
+	if mcoInstance.Spec.ObservabilityAddonSpec.EnableMetrics {
 		err = createMonitoringClusterRoleBinding(r.kubeClient)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -175,7 +200,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, instance.Spec.MetricsConfigs)
+		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, &mcoInstance)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

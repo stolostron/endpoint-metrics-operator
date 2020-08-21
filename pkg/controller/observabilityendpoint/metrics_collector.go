@@ -3,6 +3,7 @@
 package observabilityendpoint
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -100,8 +101,8 @@ type HubInfo struct {
 }
 
 func createDeployment(clusterName string, clusterID string, endpoint string,
-	configs oav1beta1.MetricsConfigsSpec) *appv1.Deployment {
-	interval := configs.Interval
+	configs oav1beta1.MultiClusterObservabilitySpec) *appv1.Deployment {
+	interval := configs.ObservabilityAddonSpec.Interval
 	commands := []string{
 		"/usr/bin/telemeter-client",
 		"--id=$(ID)",
@@ -109,7 +110,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 		"--to-upload=$(TO)",
 		"--from-ca-file=" + caMounthPath + "/service-ca.crt",
 		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
-		"--interval=" + interval,
+		"--interval=" + fmt.Sprint(interval),
 		"--label=\"cluster=" + clusterName + "\"",
 		"--label=\"clusterID=" + clusterID + "\"",
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
@@ -186,7 +187,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 }
 
 func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
-	clusterID string, configs oav1beta1.MetricsConfigsSpec) (bool, error) {
+	clusterID string, configs oav1beta1.MultiClusterObservabilitySpec) (bool, error) {
 	hub := &HubInfo{}
 	err := yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
 	if err != nil {

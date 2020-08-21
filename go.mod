@@ -3,7 +3,7 @@ module github.com/open-cluster-management/endpoint-metrics-operator
 go 1.13
 
 require (
-	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200807042649-70f686b5f090
+	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200820084953-57297cd49816
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/operator-framework/operator-sdk v0.17.0
