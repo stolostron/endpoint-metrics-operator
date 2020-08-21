@@ -101,8 +101,8 @@ type HubInfo struct {
 }
 
 func createDeployment(clusterName string, clusterID string, endpoint string,
-	configs oav1beta1.MultiClusterObservabilitySpec) *appv1.Deployment {
-	interval := configs.ObservabilityAddonSpec.Interval
+	configs oav1beta1.ObservabilityAddonSpec) *appv1.Deployment {
+	interval := configs.Interval
 	commands := []string{
 		"/usr/bin/telemeter-client",
 		"--id=$(ID)",
@@ -127,7 +127,8 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 			},
 		},
 		Spec: appv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
+			// TODO: Set Replicas to zero instead of deleting deployment?
+			Replicas: int32Ptr(1), // #TODO: should enable HA for metrics-collector deployment?
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					selectorKey: selectorValue,
@@ -187,7 +188,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 }
 
 func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
-	clusterID string, configs oav1beta1.MultiClusterObservabilitySpec) (bool, error) {
+	clusterID string, configs oav1beta1.ObservabilityAddonSpec) (bool, error) {
 	hub := &HubInfo{}
 	err := yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
 	if err != nil {
@@ -233,6 +234,7 @@ func deleteMetricsCollector(client kubernetes.Interface) (bool, error) {
 		log.Error(err, "Failed to check the metrics collector deployment")
 		return false, err
 	}
+	// TODO: Should we set Replicas to zero instead?
 	err = client.AppsV1().Deployments(namespace).Delete(metricsCollectorName, &metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, "Failed to delete the metrics collector deployment")

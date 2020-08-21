@@ -9,6 +9,7 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -166,7 +167,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 
 	mcoInstance := &oav1beta1.MultiClusterObservability{}
-	err = r.client.Get(context.TODO(), request.NamespacedName, mcoInstance)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: mcoCRName, Namespace: ""}, mcoInstance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -178,14 +179,11 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
-	// Init finalizers
-	// err = r.initFinalization(mcoInstance)
-	// if err != nil {
-	// 	return reconcile.Result{}, err
-	// }
-
 	hubSecret := &corev1.Secret{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
+	// hubSecret is in ManifestWork, Read from local k8s client
+	// ocp_resource.go
+	//	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
+	hubSecret, err = r.kubeClient.CoreV1().Secrets(namespace).Get(hubConfigName, metav1.GetOptions{}) //(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
 	if err != nil {
 		reqLogger.Error(err, "Failed to get hub secret")
 		return reconcile.Result{}, err
@@ -205,7 +203,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, &mcoInstance)
+		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, &mcoInstance.Spec.ObservabilityAddonSpec)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -221,6 +219,8 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			reportStatus(r.client, instance, "Disabled")
 		}
 	}
+
+	//TODO: UPDATE
 	return reconcile.Result{}, nil
 }
 
