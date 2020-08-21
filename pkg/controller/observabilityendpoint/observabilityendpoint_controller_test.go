@@ -30,10 +30,19 @@ func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
 			Name:      name,
 			Namespace: testNamespace,
 		},
-		Spec: oav1beta1.ObservabilityAddonSpec{
-			EnableMetrics: true,
-			MetricsConfigs: oav1beta1.MetricsConfigsSpec{
-				Interval: "1m",
+	}
+}
+
+// TBD
+func newMCOResource() *oav1beta1.MultiClusterObservability {
+	return &oav1beta1.MultiClusterObservability{
+		ObjectMeta: v1.ObjectMeta{
+			Name: name,
+		},
+		Spec: oav1beta1.MultiClusterObservabilitySpec{
+			ObservabilityAddonSpec: &oav1beta1.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      60,
 			},
 		},
 	}

@@ -7,7 +7,6 @@ import (
 	"os"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -161,9 +160,12 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 
 	// Init finalizers
-	err = r.initFinalization(instance)
+	deleted, err := r.initFinalization(instance)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+	if deleted {
+		return reconcile.Result{}, nil
 	}
 
 	mcoInstance := &oav1beta1.MultiClusterObservability{}
@@ -179,11 +181,10 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
-	hubSecret := &corev1.Secret{}
 	// hubSecret is in ManifestWork, Read from local k8s client
 	// ocp_resource.go
 	//	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
-	hubSecret, err = r.kubeClient.CoreV1().Secrets(namespace).Get(hubConfigName, metav1.GetOptions{}) //(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
+	hubSecret, err := r.kubeClient.CoreV1().Secrets(namespace).Get(hubConfigName, metav1.GetOptions{}) //(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
 	if err != nil {
 		reqLogger.Error(err, "Failed to get hub secret")
 		return reconcile.Result{}, err
@@ -203,7 +204,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec)
+		created, err := updateMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec, 1)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -211,7 +212,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			reportStatus(r.client, instance, "Ready")
 		}
 	} else {
-		deleted, err := deleteMetricsCollector(r.kubeClient)
+		deleted, err := updateMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec, 0)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -225,31 +226,33 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 }
 
 func (r *ReconcileObservabilityAddon) initFinalization(
-	ep *oav1beta1.ObservabilityAddon) error {
+	ep *oav1beta1.ObservabilityAddon) (bool, error) {
 	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
 		_, err := deleteMetricsCollector(r.kubeClient)
 		if err != nil {
-			return err
+			return false, err
 		}
 		ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
 		err = r.client.Update(context.TODO(), ep)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
-			return err
+			return false, err
 		}
+		//TBD: delete CAConfigMap, ClusterRoleBinding
 		log.Info("Finalizer removed from endpointmonitoring resource")
+		return true, nil
 	}
 	if !contains(ep.GetFinalizers(), epFinalizer) {
 		ep.SetFinalizers(append(ep.GetFinalizers(), epFinalizer))
 		err := r.client.Update(context.TODO(), ep)
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to endpointmonitoring", "namespace", ep.Namespace)
-			return err
+			return false, err
 		}
 		log.Info("Finalizer added to endpointmonitoring resource")
 	}
-	return nil
+	return false, nil
 }
 
 func contains(list []string, s string) bool {

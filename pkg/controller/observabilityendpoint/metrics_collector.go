@@ -101,7 +101,7 @@ type HubInfo struct {
 }
 
 func createDeployment(clusterName string, clusterID string, endpoint string,
-	configs oav1beta1.ObservabilityAddonSpec) *appv1.Deployment {
+	configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) *appv1.Deployment {
 	interval := configs.Interval
 	commands := []string{
 		"/usr/bin/telemeter-client",
@@ -110,7 +110,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 		"--to-upload=$(TO)",
 		"--from-ca-file=" + caMounthPath + "/service-ca.crt",
 		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
-		"--interval=" + fmt.Sprint(interval),
+		"--interval=" + fmt.Sprint(interval) + "s",
 		"--label=\"cluster=" + clusterName + "\"",
 		"--label=\"clusterID=" + clusterID + "\"",
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
@@ -127,8 +127,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 			},
 		},
 		Spec: appv1.DeploymentSpec{
-			// TODO: Set Replicas to zero instead of deleting deployment?
-			Replicas: int32Ptr(1), // #TODO: should enable HA for metrics-collector deployment?
+			Replicas: int32Ptr(replicaCount),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					selectorKey: selectorValue,
@@ -187,15 +186,15 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 	}
 }
 
-func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
-	clusterID string, configs oav1beta1.ObservabilityAddonSpec) (bool, error) {
+func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
+	clusterID string, configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) (bool, error) {
 	hub := &HubInfo{}
 	err := yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal hub info")
 		return false, err
 	}
-	deployment := createDeployment(hub.ClusterName, clusterID, hub.Endpoint, configs)
+	deployment := createDeployment(hub.ClusterName, clusterID, hub.Endpoint, configs, replicaCount)
 	found, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -240,6 +239,7 @@ func deleteMetricsCollector(client kubernetes.Interface) (bool, error) {
 		log.Error(err, "Failed to delete the metrics collector deployment")
 		return false, err
 	}
+	log.Info("metrics collector deployment deleted")
 	return true, nil
 }
 

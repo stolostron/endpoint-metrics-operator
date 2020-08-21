@@ -22,6 +22,12 @@ var (
 	serviceAccountName = os.Getenv("SERVICE_ACCOUNT")
 )
 
+//TBD: add delete
+func deleteMonitoringClusterRoleBinding(client kubernetes.Interface) error {
+	//TBD
+	return nil
+}
+
 func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 	_, err := client.RbacV1().ClusterRoleBindings().Get(clusterRoleBindingName, metav1.GetOptions{})
 	if err != nil {
@@ -63,6 +69,12 @@ func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 	return nil
 }
 
+//TBD: cleanup configmap
+func deleteCAConfigmap(client kubernetes.Interface) error {
+	//TBD
+	return nil
+}
+
 func createCAConfigmap(client kubernetes.Interface) error {
 	_, err := client.CoreV1().ConfigMaps(namespace).Get(caConfigmapName, metav1.GetOptions{})
 	if err != nil {
@@ -72,7 +84,7 @@ func createCAConfigmap(client kubernetes.Interface) error {
 					Name:      caConfigmapName,
 					Namespace: namespace,
 					Annotations: map[string]string{
-						ownerLabelKey: ownerLabelValue,
+						ownerLabelKey:                                ownerLabelValue,
 						"service.alpha.openshift.io/inject-cabundle": "true",
 					},
 				},
