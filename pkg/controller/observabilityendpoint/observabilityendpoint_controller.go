@@ -29,6 +29,7 @@ import (
 const (
 	hubConfigName   = "hub-info-secret"
 	obAddonName     = "observability-addon"
+	mcoCRName       = "observability"
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-operator"
 	epFinalizer     = "observability.open-cluster-management.io/addon-cleanup"
@@ -81,21 +82,25 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		// ManifestWork installs the Controller, so endpoint controller only should care about delete events
+		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return !e.DeleteStateUnknown
+			}
+			return false
+		},
+	}
+
+	mcoPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == mcoCRName {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == obAddonName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.MetaNew.GetName() == mcoCRName {
 				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
-				return !e.DeleteStateUnknown
 			}
 			return false
 		},
@@ -107,8 +112,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource ObservabilityAddon
-	err = c.Watch(&source.Kind{Type: &oav1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, pred)
+	// Watch for changes to primary resource MCO CR
+	err = c.Watch(&source.Kind{Type: &oav1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, mcoPred)
 	if err != nil {
 		return err
 	}
