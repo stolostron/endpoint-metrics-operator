@@ -203,7 +203,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, &mcoInstance.Spec.ObservabilityAddonSpec)
+		created, err := createMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
