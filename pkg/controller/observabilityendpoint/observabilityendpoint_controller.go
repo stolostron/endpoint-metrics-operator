@@ -82,7 +82,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	pred := predicate.Funcs{
-		// ManifestWork installs the Controller, so endpoint controller only should care about delete events
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
 				return !e.DeleteStateUnknown
@@ -195,15 +200,16 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
+	err = createMonitoringClusterRoleBinding(r.kubeClient)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	err = createCAConfigmap(r.kubeClient)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if mcoInstance.Spec.ObservabilityAddonSpec.EnableMetrics {
-		err = createMonitoringClusterRoleBinding(r.kubeClient)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		err = createCAConfigmap(r.kubeClient)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
 		created, err := updateMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec, 1)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -233,7 +239,6 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 		if err != nil {
 			return false, err
 		}
-		//TBD: delete CAConfigMap, ClusterRoleBinding
 		// Should we return bool from the delete functions for crb and cm? What is it used for? Should we use the bool before removing finalizer?
 		//SHould we return true if metricscollector is not found as that means  metrics collector is not present?
 		//Moved this part up as we need to clean up cm and crb before we remove the finalizer - is that the right way to do it?
