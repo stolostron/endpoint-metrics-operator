@@ -27,6 +27,7 @@ const (
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
 	limitBytes           = 52428800
+	defaultInterval      = "1m"
 )
 
 var (
@@ -103,6 +104,9 @@ type HubInfo struct {
 func createDeployment(clusterName string, clusterID string, endpoint string,
 	configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) *appv1.Deployment {
 	interval := configs.Interval
+	if interval == "" {
+		interval = defaultInterval
+	}
 	commands := []string{
 		"/usr/bin/telemeter-client",
 		"--id=$(ID)",
