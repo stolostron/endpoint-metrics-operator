@@ -34,14 +34,20 @@ endpoint: "http://test-endpoint"
 func TestMetricsCollector(t *testing.T) {
 	kubeClient := fake.NewSimpleClientset([]runtime.Object{}...)
 
-	configs := &oav1beta1.MetricsConfigsSpec{
-		Interval: "1m",
+	configs := &oav1beta1.ObservabilityAddonSpec{
+		EnableMetrics: true,
+		Interval:      60,
 	}
-	_, err := createMetricsCollector(kubeClient, hubInfo, testClusterID, *configs)
+	_, err := updateMetricsCollector(kubeClient, hubInfo, testClusterID, *configs, 1)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
-	_, err = createMetricsCollector(kubeClient, hubInfo, testClusterID+"-update", *configs)
+	_, err = updateMetricsCollector(kubeClient, hubInfo, testClusterID, *configs, 0)
+	if err != nil {
+		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
+	}
+
+	_, err = updateMetricsCollector(kubeClient, hubInfo, testClusterID+"-update", *configs, 1)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
