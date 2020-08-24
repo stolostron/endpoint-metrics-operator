@@ -22,9 +22,22 @@ var (
 	serviceAccountName = os.Getenv("SERVICE_ACCOUNT")
 )
 
-//TBD: add delete
 func deleteMonitoringClusterRoleBinding(client kubernetes.Interface) error {
-	//TBD
+	rb, err := client.RbacV1().ClusterRoleBindings().Get(clusterRoleBindingName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(err.Error(), ": clusterrolebinding already deleted")
+			return nil
+		}
+		log.Error(err, ": Failed to check the clusterrolebinding")
+		return err
+	}
+	err = client.RbacV1().ClusterRoleBindings().Delete(rb.GetName(), &metav1.DeleteOptions{})
+	if err != nil {
+		log.Error(err, ": Error deleting clusterrolebinding")
+		return err
+	}
+	log.Info("clusterrolebinding deleted")
 	return nil
 }
 
@@ -69,9 +82,23 @@ func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 	return nil
 }
 
-//TBD: cleanup configmap
 func deleteCAConfigmap(client kubernetes.Interface) error {
 	//TBD
+	cm, err := client.CoreV1().ConfigMaps(namespace).Get(caConfigmapName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(err.Error(), ": configmap already deleted")
+			return nil
+		}
+		log.Error(err, ": Failed to check the configmap")
+		return err
+	}
+	err = client.CoreV1().ConfigMaps(namespace).Delete(cm.GetName(), &metav1.DeleteOptions{})
+	if err != nil {
+		log.Error(err, ": Error deleting configmap")
+		return err
+	}
+	log.Info("configmap deleted")
 	return nil
 }
 
@@ -84,7 +111,7 @@ func createCAConfigmap(client kubernetes.Interface) error {
 					Name:      caConfigmapName,
 					Namespace: namespace,
 					Annotations: map[string]string{
-						ownerLabelKey:                                ownerLabelValue,
+						ownerLabelKey: ownerLabelValue,
 						"service.alpha.openshift.io/inject-cabundle": "true",
 					},
 				},

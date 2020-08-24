@@ -229,7 +229,19 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 	ep *oav1beta1.ObservabilityAddon) (bool, error) {
 	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
-		_, err := deleteMetricsCollector(r.kubeClient)
+		err := deleteMetricsCollector(r.kubeClient)
+		if err != nil {
+			return false, err
+		}
+		//TBD: delete CAConfigMap, ClusterRoleBinding
+		// Should we return bool from the delete functions for crb and cm? What is it used for? Should we use the bool before removing finalizer?
+		//SHould we return true if metricscollector is not found as that means  metrics collector is not present?
+		//Moved this part up as we need to clean up cm and crb before we remove the finalizer - is that the right way to do it?
+		err = deleteMonitoringClusterRoleBinding(r.kubeClient)
+		if err != nil {
+			return false, err
+		}
+		err = deleteCAConfigmap(r.kubeClient)
 		if err != nil {
 			return false, err
 		}
@@ -239,7 +251,6 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 			log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
 			return false, err
 		}
-		//TBD: delete CAConfigMap, ClusterRoleBinding
 		log.Info("Finalizer removed from endpointmonitoring resource")
 		return true, nil
 	}
