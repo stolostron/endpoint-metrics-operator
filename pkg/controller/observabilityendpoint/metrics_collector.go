@@ -227,24 +227,24 @@ func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 	return true, nil
 }
 
-func deleteMetricsCollector(client kubernetes.Interface) (bool, error) {
+func deleteMetricsCollector(client kubernetes.Interface) error {
 	_, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("The metrics collector deployment does not exist")
-			return false, nil
+			return nil
 		}
 		log.Error(err, "Failed to check the metrics collector deployment")
-		return false, err
+		return err
 	}
 	// TODO: Should we set Replicas to zero instead?
 	err = client.AppsV1().Deployments(namespace).Delete(metricsCollectorName, &metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, "Failed to delete the metrics collector deployment")
-		return false, err
+		return err
 	}
 	log.Info("metrics collector deployment deleted")
-	return true, nil
+	return nil
 }
 
 func int32Ptr(i int32) *int32 { return &i }
