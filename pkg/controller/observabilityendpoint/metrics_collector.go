@@ -27,7 +27,7 @@ const (
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
 	limitBytes           = 52428800
-	defaultInterval      = 60
+	defaultInterval      = "60s"
 )
 
 var (
