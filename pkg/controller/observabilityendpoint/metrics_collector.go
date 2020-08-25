@@ -27,7 +27,7 @@ const (
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
 	limitBytes           = 52428800
-	defaultInterval      = "1m"
+	defaultInterval      = 60
 )
 
 var (
@@ -104,7 +104,7 @@ type HubInfo struct {
 func createDeployment(clusterName string, clusterID string, endpoint string,
 	configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) *appv1.Deployment {
 	interval := configs.Interval
-	if interval == "" {
+	if interval <= 0 {
 		interval = defaultInterval
 	}
 	commands := []string{

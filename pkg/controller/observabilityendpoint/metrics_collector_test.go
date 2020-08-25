@@ -38,10 +38,12 @@ func TestMetricsCollector(t *testing.T) {
 		EnableMetrics: true,
 		Interval:      60,
 	}
+	// Default deployment with instance count 1
 	_, err := updateMetricsCollector(kubeClient, hubInfo, testClusterID, *configs, 1)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
+	// Update deployment to reduce instance count to zero
 	_, err = updateMetricsCollector(kubeClient, hubInfo, testClusterID, *configs, 0)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
@@ -52,7 +54,7 @@ func TestMetricsCollector(t *testing.T) {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = deleteMetricsCollector(kubeClient)
+	err = deleteMetricsCollector(kubeClient)
 	if err != nil {
 		t.Fatalf("Failed to delete metrics collector deployment: (%v)", err)
 	}
