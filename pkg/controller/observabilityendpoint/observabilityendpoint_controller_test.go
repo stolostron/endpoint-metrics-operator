@@ -33,7 +33,6 @@ func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
 	}
 }
 
-// TBD
 func newMCOResource() *oav1beta1.MultiClusterObservability {
 	return &oav1beta1.MultiClusterObservability{
 		ObjectMeta: v1.ObjectMeta{
@@ -56,12 +55,14 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	oa := newObservabilityAddon()
-	objs := []runtime.Object{oa, hubInfo}
+	mcoa := newMCOResource()
+	objs := []runtime.Object{oa, hubInfo, mcoa}
 
 	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
 	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
 
 	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, mcoa)
 	c := fake.NewFakeClient(objs...)
 	r := &ReconcileObservabilityAddon{
 		client:     c,
@@ -98,7 +99,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	oa.Spec.EnableMetrics = false
+	mcoa.Spec.ObservabilityAddonSpec.EnableMetrics = false
 	c = fake.NewFakeClient(objs...)
 	r = &ReconcileObservabilityAddon{
 		client:     c,
