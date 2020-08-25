@@ -3,20 +3,15 @@ module github.com/open-cluster-management/endpoint-metrics-operator
 go 1.13
 
 require (
-	github.com/coreos/etcd v3.3.25+incompatible // indirect
-	github.com/hashicorp/consul v1.7.4 // indirect
 	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200807042649-70f686b5f090
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
-	github.com/openshift/origin v1.2.0 // indirect
 	github.com/operator-framework/operator-sdk v0.17.0
-	github.com/prometheus/prometheus v2.9.2+incompatible // indirect
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/kubernetes v1.18.8 // indirect
 	sigs.k8s.io/controller-runtime v0.5.2
 )
 
@@ -40,6 +35,7 @@ replace (
 	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
 	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
 	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
+	k8s.io/kubernetes => k8s.io/kubernetes v1.18.8
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
@@ -48,7 +44,9 @@ replace (
 replace (
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.25+incompatible
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/consul => github.com/hashicorp/consul v1.7.4
 	github.com/mholt/caddy => github.com/caddyserver/caddy v1.0.5
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
+	github.com/openshift/origin => github.com/openshift/origin v1.2.0
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v2.9.2+incompatible
 )
