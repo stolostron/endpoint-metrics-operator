@@ -103,8 +103,8 @@ type HubInfo struct {
 
 func createDeployment(clusterName string, clusterID string, endpoint string,
 	configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) *appv1.Deployment {
-	interval := configs.Interval
-	if interval <= 0 {
+	interval := fmt.Sprint(configs.Interval) + "s"
+	if fmt.Sprint(configs.Interval) == "" {
 		interval = defaultInterval
 	}
 	commands := []string{
@@ -114,7 +114,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 		"--to-upload=$(TO)",
 		"--from-ca-file=" + caMounthPath + "/service-ca.crt",
 		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
-		"--interval=" + fmt.Sprint(interval) + "s",
+		"--interval=" + interval,
 		"--label=\"cluster=" + clusterName + "\"",
 		"--label=\"clusterID=" + clusterID + "\"",
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
