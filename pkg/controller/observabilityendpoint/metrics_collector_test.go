@@ -52,7 +52,7 @@ func TestMetricsCollector(t *testing.T) {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = deleteMetricsCollector(kubeClient)
+	err = deleteMetricsCollector(kubeClient)
 	if err != nil {
 		t.Fatalf("Failed to delete metrics collector deployment: (%v)", err)
 	}
