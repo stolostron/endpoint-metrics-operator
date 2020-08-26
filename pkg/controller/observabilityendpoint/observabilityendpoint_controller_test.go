@@ -7,6 +7,8 @@ import (
 	"time"
 
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,6 +24,7 @@ import (
 const (
 	name          = "observability-addon"
 	testNamespace = "test-ns"
+	hubInfoName   = "hub-info-secret"
 )
 
 func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
@@ -30,12 +33,34 @@ func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
 			Name:      name,
 			Namespace: testNamespace,
 		},
-		Spec: oav1beta1.ObservabilityAddonSpec{
-			EnableMetrics: true,
-			MetricsConfigs: oav1beta1.MetricsConfigsSpec{
-				Interval: "1m",
+	}
+}
+
+func newMCOResource() *oav1beta1.MultiClusterObservability {
+	return &oav1beta1.MultiClusterObservability{
+		ObjectMeta: v1.ObjectMeta{
+			Name: mcoCRName,
+		},
+		Spec: oav1beta1.MultiClusterObservabilitySpec{
+			ObservabilityAddonSpec: &oav1beta1.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      60,
 			},
 		},
+	}
+}
+
+func newHubInfoSecret() *corev1.Secret {
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubInfoName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{},
 	}
 }
 
@@ -47,12 +72,16 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	oa := newObservabilityAddon()
-	objs := []runtime.Object{oa, hubInfo}
+	mcoa := newMCOResource()
+	objs := []runtime.Object{oa, hubInfo, mcoa}
 
-	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
+	hubInfo := newHubInfoSecret()
+
+	kubeClient := kubefakeclient.NewSimpleClientset(hubInfo)
 	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
 
 	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
+	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, mcoa)
 	c := fake.NewFakeClient(objs...)
 	r := &ReconcileObservabilityAddon{
 		client:     c,
@@ -89,7 +118,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	oa.Spec.EnableMetrics = false
+	mcoa.Spec.ObservabilityAddonSpec.EnableMetrics = false
 	c = fake.NewFakeClient(objs...)
 	r = &ReconcileObservabilityAddon{
 		client:     c,

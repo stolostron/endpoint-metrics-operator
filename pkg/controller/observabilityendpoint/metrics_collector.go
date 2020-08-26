@@ -3,6 +3,7 @@
 package observabilityendpoint
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -26,7 +27,7 @@ const (
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
 	limitBytes           = 52428800
-	defaultInterval      = "1m"
+	defaultInterval      = "60s"
 )
 
 var (
@@ -101,9 +102,9 @@ type HubInfo struct {
 }
 
 func createDeployment(clusterName string, clusterID string, endpoint string,
-	configs oav1beta1.MetricsConfigsSpec) *appv1.Deployment {
-	interval := configs.Interval
-	if interval == "" {
+	configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) *appv1.Deployment {
+	interval := fmt.Sprint(configs.Interval) + "s"
+	if fmt.Sprint(configs.Interval) == "" {
 		interval = defaultInterval
 	}
 	commands := []string{
@@ -130,7 +131,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 			},
 		},
 		Spec: appv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
+			Replicas: int32Ptr(replicaCount),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					selectorKey: selectorValue,
@@ -189,15 +190,15 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 	}
 }
 
-func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
-	clusterID string, configs oav1beta1.MetricsConfigsSpec) (bool, error) {
+func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
+	clusterID string, configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) (bool, error) {
 	hub := &HubInfo{}
 	err := yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal hub info")
 		return false, err
 	}
-	deployment := createDeployment(hub.ClusterName, clusterID, hub.Endpoint, configs)
+	deployment := createDeployment(hub.ClusterName, clusterID, hub.Endpoint, configs, replicaCount)
 	found, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -226,22 +227,24 @@ func createMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 	return true, nil
 }
 
-func deleteMetricsCollector(client kubernetes.Interface) (bool, error) {
+func deleteMetricsCollector(client kubernetes.Interface) error {
 	_, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("The metrics collector deployment does not exist")
-			return false, nil
+			return nil
 		}
 		log.Error(err, "Failed to check the metrics collector deployment")
-		return false, err
+		return err
 	}
+	// TODO: Should we set Replicas to zero instead?
 	err = client.AppsV1().Deployments(namespace).Delete(metricsCollectorName, &metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, "Failed to delete the metrics collector deployment")
-		return false, err
+		return err
 	}
-	return true, nil
+	log.Info("metrics collector deployment deleted")
+	return nil
 }
 
 func int32Ptr(i int32) *int32 { return &i }

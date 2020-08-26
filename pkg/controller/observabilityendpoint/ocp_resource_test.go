@@ -25,19 +25,28 @@ var (
 	}
 )
 
-func TestCreateCAConfigmap(t *testing.T) {
+func TestCreateDeleteCAConfigmap(t *testing.T) {
 	kubeClient := fake.NewSimpleClientset([]runtime.Object{}...)
 	err := createCAConfigmap(kubeClient)
 	if err != nil {
 		t.Fatalf("Failed to create CA configmap: (%v)", err)
 	}
+	err = deleteCAConfigmap(kubeClient)
+	if err != nil {
+		t.Fatalf("Failed to delete CA configmap: (%v)", err)
+	}
 }
 
-func TestCreateMonitoringClusterRoleBinding(t *testing.T) {
+func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	kubeClient := fake.NewSimpleClientset([]runtime.Object{}...)
 	err := createMonitoringClusterRoleBinding(kubeClient)
 	if err != nil {
 		t.Fatalf("Failed to create clusterrolebinding: (%v)", err)
+	}
+	err = deleteMonitoringClusterRoleBinding(kubeClient)
+
+	if err != nil {
+		t.Fatalf("Failed to delete clusterrolebinding: (%v)", err)
 	}
 }
 
