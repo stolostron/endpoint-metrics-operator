@@ -36,8 +36,9 @@ const (
 )
 
 var (
-	namespace = os.Getenv("NAMESPACE")
-	log       = logf.Log.WithName("controller_observabilityaddon")
+	namespace    = os.Getenv("NAMESPACE")
+	hubNamespace = os.Getenv("WATCH_NAMESPACE")
+	log          = logf.Log.WithName("controller_observabilityaddon")
 )
 
 /**
@@ -152,7 +153,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 
 	// Fetch the ObservabilityAddon instance
 	instance := &oav1beta1.ObservabilityAddon{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -180,6 +181,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			reqLogger.Info("Cannot find mco observability")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
