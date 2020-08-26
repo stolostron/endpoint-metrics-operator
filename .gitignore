@@ -1,7 +1,6 @@
 # Temporary Build Files
 build/_output
 build/_test
-vendor/
 .build-harness-bootstrap
 build-harness-extensions/
 build-harness/
