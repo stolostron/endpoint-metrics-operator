@@ -48,5 +48,5 @@ replace (
 	github.com/mholt/caddy => github.com/caddyserver/caddy v1.0.5
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
 	github.com/openshift/origin => github.com/openshift/origin v1.2.0
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v2.9.2+incompatible
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20190424153033-d3245f150225
 )
