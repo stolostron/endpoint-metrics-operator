@@ -33,6 +33,7 @@ const (
 var (
 	collectorImage         = os.Getenv("COLLECTOR_IMAGE")
 	internalDefaultMetrics = []string{
+		"ALERTS",
 		":node_memory_MemAvailable_bytes:sum",
 		"apiserver_request_count",
 		"apiserver_request_duration_seconds_bucket",
