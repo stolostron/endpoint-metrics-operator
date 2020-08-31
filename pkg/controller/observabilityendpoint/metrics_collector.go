@@ -85,6 +85,7 @@ var (
 		"kube_pod_container_resource_limits_memory_bytes",
 		"kube_pod_container_resource_requests_cpu_cores",
 		"kube_pod_container_resource_requests_memory_bytes",
+		"kube_pod_container_status_restarts_total",
 		"kube_pod_info",
 		"kube_pod_status_ready",
 		"kube_resourcequota",
