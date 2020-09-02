@@ -65,7 +65,7 @@ var (
 		"container_network_transmit_packets_dropped_total",
 		"container_network_transmit_packets_total",
 		"haproxy_backend_connections_total",
-		"instance:node_filesystem_usage:sum"
+		"instance:node_filesystem_usage:sum",
 		"instance:node_cpu_utilisation:rate1m",
 		"instance:node_load1_per_cpu:ratio",
 		"instance:node_memory_utilisation:ratio",
