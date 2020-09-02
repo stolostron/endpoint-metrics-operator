@@ -65,6 +65,7 @@ var (
 		"container_network_transmit_packets_dropped_total",
 		"container_network_transmit_packets_total",
 		"haproxy_backend_connections_total",
+		"instance:node_filesystem_usage:sum",
 		"instance:node_cpu_utilisation:rate1m",
 		"instance:node_load1_per_cpu:ratio",
 		"instance:node_memory_utilisation:ratio",
@@ -94,12 +95,9 @@ var (
 		"mixin_pod_workload",
 		"node_cpu_seconds_total",
 		"node_filesystem_avail_bytes",
+		"node_filesystem_free_bytes",
 		"node_filesystem_size_bytes",
 		"node_memory_MemAvailable_bytes",
-		"node_memory_MemTotal_bytes",
-		"node_memory_MemFree_bytes",
-		"node_memory_Buffers_bytes",
-		"node_memory_Cached_bytes",
 		"node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate",
 		"node_namespace_pod_container:container_memory_cache",
 		"node_namespace_pod_container:container_memory_rss",
@@ -113,7 +111,10 @@ var (
 		"rest_client_request_latency_seconds_bucket",
 		"rest_client_requests_total",
 		"up",
-		"workqueue_queue_duration_seconds_bucket",
+		"workqueue_adds_total",
+		"workqueue_depth",
+		"workqueue_queue_duration_seconds_bucket"
+
 	}
 )
 
