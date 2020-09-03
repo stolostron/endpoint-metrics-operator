@@ -115,8 +115,7 @@ var (
 		"up",
 		"workqueue_adds_total",
 		"workqueue_depth",
-		"workqueue_queue_duration_seconds_bucket"
-
+		"workqueue_queue_duration_seconds_bucket",
 	}
 )
 
