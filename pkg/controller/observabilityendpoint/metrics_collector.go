@@ -26,6 +26,7 @@ const (
 	ocpPromURL           = "https://prometheus-k8s.openshift-monitoring.svc:9091"
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
+	mtlsCertName         = "observability-managed-cluster-certs"
 	limitBytes           = 52428800
 	defaultInterval      = "60s"
 )
@@ -193,6 +194,10 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 									Name:      caVolName,
 									MountPath: caMounthPath,
 								},
+								{
+									Name:      mtlsCertName,
+									MountPath: "/tlscerts",
+								},
 							},
 						},
 					},
@@ -204,6 +209,14 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 									LocalObjectReference: v1.LocalObjectReference{
 										Name: caConfigmapName,
 									},
+								},
+							},
+						},
+						{
+							Name: mtlsCertName,
+							VolumeSource: v1.VolumeSource{
+								Secret: &v1.SecretVolumeSource{
+									SecretName: mtlsCertName,
 								},
 							},
 						},
