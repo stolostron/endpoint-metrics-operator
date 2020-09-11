@@ -4,9 +4,9 @@ package observabilityendpoint
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
@@ -29,10 +29,22 @@ endpoint: "http://test-endpoint"
 `),
 		},
 	}
+
+	whitelistCM = &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      metricsConfigMapName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{metricsConfigMapKey: `
+defalut:
+	- a
+	- b
+`},
+	}
 )
 
 func TestMetricsCollector(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset([]runtime.Object{}...)
+	kubeClient := fake.NewSimpleClientset(whitelistCM)
 
 	configs := &oav1beta1.ObservabilityAddonSpec{
 		EnableMetrics: true,
