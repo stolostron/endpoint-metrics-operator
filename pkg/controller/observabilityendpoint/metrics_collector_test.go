@@ -36,7 +36,7 @@ endpoint: "http://test-endpoint"
 			Namespace: namespace,
 		},
 		Data: map[string]string{metricsConfigMapKey: `
-defalut:
+default:
 	- a
 	- b
 `},
