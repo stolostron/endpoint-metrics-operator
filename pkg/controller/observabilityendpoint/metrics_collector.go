@@ -38,7 +38,8 @@ var (
 )
 
 type MetricsWhitelist struct {
-	DefaultList []string `yaml:"default"`
+	NameList  []string `yaml:"names"`
+	MatchList []string `yaml:"matches"`
 }
 
 // HubInfo is the struct for hub info
@@ -48,7 +49,7 @@ type HubInfo struct {
 }
 
 func createDeployment(clusterName string, clusterID string, endpoint string,
-	configs oav1beta1.ObservabilityAddonSpec, whitelist []string, replicaCount int32) *appv1.Deployment {
+	configs oav1beta1.ObservabilityAddonSpec, whitelist MetricsWhitelist, replicaCount int32) *appv1.Deployment {
 	interval := fmt.Sprint(configs.Interval) + "s"
 	if fmt.Sprint(configs.Interval) == "" {
 		interval = defaultInterval
@@ -65,8 +66,11 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 		"--label=\"clusterID=" + clusterID + "\"",
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 	}
-	for _, metrics := range whitelist {
+	for _, metrics := range whitelist.NameList {
 		commands = append(commands, "--match={__name__=\""+metrics+"\"}")
+	}
+	for _, match := range whitelist.MatchList {
+		commands = append(commands, "--match={"+match+"}")
 	}
 	return &appv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -208,19 +212,18 @@ func deleteMetricsCollector(client kubernetes.Interface) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsWhitelist(client kubernetes.Interface) []string {
+func getMetricsWhitelist(client kubernetes.Interface) MetricsWhitelist {
+	l := &MetricsWhitelist{}
 	cm, err := client.CoreV1().ConfigMaps(namespace).Get(metricsConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		log.Error(err, "Failed to get configmap")
-		return []string{}
+	} else {
+		if cm.Data != nil {
+			err = yaml.Unmarshal([]byte(cm.Data[metricsConfigMapKey]), l)
+			if err != nil {
+				log.Error(err, "Failed to unmarshal data in configmap")
+			}
+		}
 	}
-	if cm.Data == nil {
-		return []string{}
-	}
-	l := &MetricsWhitelist{}
-	err = yaml.Unmarshal([]byte(cm.Data[metricsConfigMapKey]), l)
-	if err != nil {
-		log.Error(err, "Failed to unmarshal data in configmap")
-	}
-	return l.DefaultList
+	return *l
 }
