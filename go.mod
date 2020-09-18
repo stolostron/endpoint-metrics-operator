@@ -42,7 +42,6 @@ replace (
 )
 
 replace (
-	bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.25+incompatible
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/consul => github.com/hashicorp/consul v1.7.4
