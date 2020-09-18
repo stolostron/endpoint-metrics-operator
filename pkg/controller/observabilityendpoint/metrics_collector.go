@@ -184,7 +184,6 @@ func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 				return false, err
 			}
 			log.Info("Updated metrics-collector deployment ")
-			return false, nil
 		}
 	}
 	return true, nil
