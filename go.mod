@@ -3,12 +3,12 @@ module github.com/open-cluster-management/endpoint-metrics-operator
 go 1.13
 
 require (
-	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200820084953-57297cd49816
+	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200921074316-db0890fde46c
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/spf13/pflag v1.0.5
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible
@@ -45,6 +45,7 @@ replace (
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.25+incompatible
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/consul => github.com/hashicorp/consul v1.7.4
+	github.com/jetstack/cert-manager => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
 	github.com/mholt/caddy => github.com/caddyserver/caddy v1.0.5
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
 	github.com/openshift/origin => github.com/openshift/origin v1.2.0
