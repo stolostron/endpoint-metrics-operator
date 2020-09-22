@@ -23,16 +23,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
-	hubConfigName   = "hub-info-secret"
-	obAddonName     = "observability-addon"
-	mcoCRName       = "observability"
-	ownerLabelKey   = "owner"
-	ownerLabelValue = "multicluster-operator"
-	epFinalizer     = "observability.open-cluster-management.io/addon-cleanup"
+	hubConfigName           = "hub-info-secret"
+	obAddonName             = "observability-addon"
+	mcoCRName               = "observability"
+	ownerLabelKey           = "owner"
+	ownerLabelValue         = "multicluster-operator"
+	epFinalizer             = "observability.open-cluster-management.io/addon-cleanup"
+	managedClusterAddonName = "observability-controller"
 )
 
 var (
@@ -174,6 +176,21 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, nil
 	}
 
+	// Fetch the ManagedClusterAddon instance
+	mcaInstance := &addonv1alpha1.ManagedClusterAddOn{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: managedClusterAddonName, Namespace: hubNamespace}, mcaInstance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			reqLogger.Info("Cannot find ManagedClusterAddOn ", managedClusterAddonName, "namespace ", hubNamespace)
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
 	mcoInstance := &oav1beta1.MultiClusterObservability{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: mcoCRName, Namespace: ""}, mcoInstance)
 	if err != nil {
@@ -199,6 +216,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	clusterID, err := getClusterID(r.ocpClient)
 	if err != nil {
 		reportStatus(r.client, instance, "NotSupported")
+		reportStatusToMCAddon(r.client, mcaInstance, "NotSupported")
 		return reconcile.Result{}, err
 	}
 
@@ -214,10 +232,12 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	if mcoInstance.Spec.ObservabilityAddonSpec.EnableMetrics {
 		created, err := updateMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec, 1)
 		if err != nil {
+			reportStatusToMCAddon(r.client, mcaInstance, "Degraded")
 			return reconcile.Result{}, err
 		}
 		if created {
 			reportStatus(r.client, instance, "Ready")
+			reportStatusToMCAddon(r.client, mcaInstance, "Ready")
 		}
 	} else {
 		deleted, err := updateMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec, 0)
@@ -226,6 +246,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		}
 		if deleted {
 			reportStatus(r.client, instance, "Disabled")
+			reportStatusToMCAddon(r.client, mcaInstance, "Disabled")
 		}
 	}
 
