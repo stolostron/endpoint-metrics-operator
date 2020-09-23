@@ -22,14 +22,14 @@ var (
 			"type":    "Disabled",
 			"reason":  "Disabled",
 			"message": "enableMetrics is set to False"},
-		"NotSupported": map[string]string{
-			"type":    "Available",
-			"reason":  "NotSupported",
-			"message": "Observability is not supported in this cluster"},
 		"Degraded": map[string]string{
 			"type":    "Degraded",
 			"reason":  "Degraded",
 			"message": "Metrics collector deployment not successful"},
+		"NotSupported": map[string]string{
+			"type":    "NotSupported",
+			"reason":  "NotSupported",
+			"message": "Observability is not supported in this cluster"},
 	}
 )
 
@@ -50,51 +50,44 @@ func reportStatus(c client.Client, i *oav1beta1.ObservabilityAddon, t string) {
 }
 
 func reportStatusToMCAddon(c client.Client, i *addonv1alpha1.ManagedClusterAddOn, t string) {
-
-	i.Status.Conditions = []addonv1alpha1.Condition{
-		{
-			Type:               t,
-			Status:             metav1.ConditionTrue,
-			LastTransitionTime: metav1.NewTime(time.Now()),
-			Reason:             conditions[t]["reason"],
-			Message:            conditions[t]["message"],
-		},
+	if t == "NotSupported" {
+		i.Status.Conditions = []addonv1alpha1.Condition{
+			{
+				Type:               t,
+				Status:             metav1.ConditionTrue,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+				Reason:             conditions[t]["reason"],
+				Message:            conditions[t]["message"],
+			},
+		}
+	} else {
+		// If Supported Change status for type Available, Degraded and Disabled
+		var conditionArray = make([]addonv1alpha1.Condition, 3)
+		count := 0
+		for key := range conditions {
+			if key == "NotSupported" {
+				continue
+			}
+			var status metav1.ConditionStatus
+			if key == t {
+				status = metav1.ConditionTrue
+			} else {
+				status = metav1.ConditionFalse
+			}
+			conditionArray[count] = addonv1alpha1.Condition{
+				Type:               conditions[key]["type"],
+				Status:             status,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+				Reason:             conditions[key]["reason"],
+				Message:            conditions[key]["message"],
+			}
+			count++
+		}
+		i.Status.Conditions = conditionArray
 	}
+
 	err := c.Status().Update(context.TODO(), i)
 	if err != nil {
 		log.Error(err, "Failed to update status for mamagedclusteraddon")
 	}
 }
-
-/*
-// createCondition returns a condition based on given information
-func createCondition(
-	conditionType string,
-	status metav1.ConditionStatus,
-	reason string,
-	msg string,
-) *addonv1alpha1.Condition {
-	return &addonv1alpha1.Condition{
-		Type:               conditionType,
-		Status:             status,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
-		Reason:             reason,
-		Message:            msg,
-	}
-}
-
-// setStatusCondition appends new if there is no existed condition with same type
-// will override a condition if it is with the same type, will do no changes if type & status & reason are the same
-// this method assumes the given array of conditions don't have any two conditions with the same type
-func setStatusCondition(conditions *[]addonv1alpha1.Condition, condition *addonv1alpha1.Condition) {
-	for i, c := range *conditions {
-		if c.Type == condition.Type {
-			if c.Status != condition.Status || c.Reason != condition.Reason {
-				(*conditions)[i] = *condition
-			}
-			return
-		}
-	}
-	*conditions = append(*conditions, *condition)
-}
-*/
