@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/controller"
 	"github.com/open-cluster-management/endpoint-metrics-operator/version"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
@@ -139,6 +140,11 @@ func main() {
 
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := addonv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

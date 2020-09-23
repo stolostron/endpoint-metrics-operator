@@ -97,3 +97,12 @@ rules:
   - clusterversions
   verbs:
   - get
+- apiGroups: 
+  - addon.open-cluster-management.io
+  resources: 
+  - managedclusteraddons
+  verbs:
+  - watch
+  - get
+  - list
+  - update  

@@ -53,6 +53,8 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1
 github.com/modern-go/reflect2
+# github.com/open-cluster-management/addon-framework v0.0.0-20200904153721-299d23c69ccf
+github.com/open-cluster-management/addon-framework/api/v1alpha1
 # github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200820084953-57297cd49816
 github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis
 github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1
@@ -209,7 +211,7 @@ k8s.io/api/settings/v1alpha1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apimachinery v0.18.3 => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
+# k8s.io/apimachinery v0.18.4 => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
 k8s.io/apimachinery/pkg/api/resource

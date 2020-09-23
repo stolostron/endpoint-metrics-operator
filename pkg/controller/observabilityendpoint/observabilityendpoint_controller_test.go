@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
@@ -50,6 +51,19 @@ func newMCOResource() *oav1beta1.MultiClusterObservability {
 	}
 }
 
+func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
+	return &addonv1alpha1.ManagedClusterAddOn{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "ManagedClusterAddOn",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      managedClusterAddonName,
+			Namespace: namespace,
+		},
+	}
+}
+
 func newHubInfoSecret() *corev1.Secret {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -73,7 +87,8 @@ func TestObservabilityAddonController(t *testing.T) {
 
 	oa := newObservabilityAddon()
 	mcoa := newMCOResource()
-	objs := []runtime.Object{oa, hubInfo, mcoa}
+	mcaddon := newManagedClusterAddon()
+	objs := []runtime.Object{oa, hubInfo, mcoa, mcaddon}
 
 	hubInfo := newHubInfoSecret()
 
@@ -82,6 +97,7 @@ func TestObservabilityAddonController(t *testing.T) {
 
 	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
 	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, mcoa)
+	s.AddKnownTypes(addonv1alpha1.SchemeGroupVersion, mcaddon)
 	c := fake.NewFakeClient(objs...)
 	r := &ReconcileObservabilityAddon{
 		client:     c,
