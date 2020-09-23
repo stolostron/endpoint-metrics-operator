@@ -178,7 +178,8 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 
 	// Fetch the ManagedClusterAddon instance
 	mcaInstance := &addonv1alpha1.ManagedClusterAddOn{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: managedClusterAddonName, Namespace: hubNamespace}, mcaInstance)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: managedClusterAddonName,
+		Namespace: hubNamespace}, mcaInstance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
