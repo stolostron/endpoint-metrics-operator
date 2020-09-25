@@ -35,6 +35,8 @@ const (
 	ownerLabelValue         = "multicluster-operator"
 	epFinalizer             = "observability.open-cluster-management.io/addon-cleanup"
 	managedClusterAddonName = "observability-controller"
+	promSvcName             = "prometheus-k8s"
+	promNamespace           = "openshift-monitoring"
 )
 
 var (
@@ -206,6 +208,14 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
+	// If no prometheus service found, set status as NotSupported
+	_, err = r.kubeClient.CoreV1().Services(promNamespace).Get(promSvcName, metav1.GetOptions{})
+	if err != nil {
+		reqLogger.Error(err, "Failed to get prometheus resource")
+		reportStatus(r.client, instance, "NotSupported")
+		reportStatusToMCAddon(r.client, mcaInstance, "NotSupported")
+		return reconcile.Result{}, nil
+	}
 	// hubSecret is in ManifestWork, Read from local k8s client
 	// ocp_resource.go
 	//	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
@@ -216,9 +226,8 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 	clusterID, err := getClusterID(r.ocpClient)
 	if err != nil {
-		reportStatus(r.client, instance, "NotSupported")
-		reportStatusToMCAddon(r.client, mcaInstance, "NotSupported")
-		return reconcile.Result{}, err
+		// OCP 3.11 has no cluster id, set it as empty string
+		clusterID = ""
 	}
 
 	err = createMonitoringClusterRoleBinding(r.kubeClient)

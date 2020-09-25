@@ -54,12 +54,51 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 	if fmt.Sprint(configs.Interval) == "" {
 		interval = defaultInterval
 	}
+
+	volumes := []v1.Volume{
+		{
+			Name: mtlsCertName,
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: mtlsCertName,
+				},
+			},
+		},
+	}
+	mounts := []v1.VolumeMount{
+		{
+			Name:      mtlsCertName,
+			MountPath: "/tlscerts",
+		},
+	}
+	caFile := caMounthPath + "/service-ca.crt"
+	if clusterID == "" {
+		clusterID = clusterName
+		// deprecated ca bundle, only used for ocp 3.11 env
+		caFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+	} else {
+		volumes = append(volumes, v1.Volume{
+			Name: caVolName,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: caConfigmapName,
+					},
+				},
+			},
+		})
+		mounts = append(mounts, v1.VolumeMount{
+			Name:      caVolName,
+			MountPath: caMounthPath,
+		})
+	}
+
 	commands := []string{
 		"/usr/bin/telemeter-client",
 		"--id=$(ID)",
 		"--from=$(FROM)",
 		"--to-upload=$(TO)",
-		"--from-ca-file=" + caMounthPath + "/service-ca.crt",
+		"--from-ca-file=" + caFile,
 		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
 		"--interval=" + interval,
 		"--label=\"cluster=" + clusterName + "\"",
@@ -114,38 +153,10 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 									Value: clusterID,
 								},
 							},
-							VolumeMounts: []v1.VolumeMount{
-								{
-									Name:      caVolName,
-									MountPath: caMounthPath,
-								},
-								{
-									Name:      mtlsCertName,
-									MountPath: "/tlscerts",
-								},
-							},
+							VolumeMounts: mounts,
 						},
 					},
-					Volumes: []v1.Volume{
-						{
-							Name: caVolName,
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
-									LocalObjectReference: v1.LocalObjectReference{
-										Name: caConfigmapName,
-									},
-								},
-							},
-						},
-						{
-							Name: mtlsCertName,
-							VolumeSource: v1.VolumeSource{
-								Secret: &v1.SecretVolumeSource{
-									SecretName: mtlsCertName,
-								},
-							},
-						},
-					},
+					Volumes: volumes,
 				},
 			},
 		},
