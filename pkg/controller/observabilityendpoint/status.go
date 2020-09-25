@@ -29,7 +29,7 @@ var (
 		"NotSupported": map[string]string{
 			"type":    "NotSupported",
 			"reason":  "NotSupported",
-			"message": "Observability is not supported in this cluster"},
+			"message": "No Prometheus service found in this cluster"},
 	}
 )
 

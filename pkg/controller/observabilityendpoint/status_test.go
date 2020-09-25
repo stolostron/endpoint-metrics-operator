@@ -26,7 +26,7 @@ func TestReportStatus(t *testing.T) {
 			Type:    "NotSupported",
 			Status:  metav1.ConditionTrue,
 			Reason:  "NotSupported",
-			Message: "Observability is not supported in this cluster",
+			Message: "No Prometheus service found in this cluster",
 		},
 		{
 			Type:    "Ready",
