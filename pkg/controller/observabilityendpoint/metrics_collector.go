@@ -29,7 +29,7 @@ const (
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
 	mtlsCertName         = "observability-managed-cluster-certs"
-	limitBytes           = 52428800
+	limitBytes           = 1073741824
 	defaultInterval      = "60s"
 )
 
