@@ -219,7 +219,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	// hubSecret is in ManifestWork, Read from local k8s client
 	// ocp_resource.go
 	//	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
-	hubSecret, err := r.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), hubConfigName, metav1.GetOptions{}) //(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
+	hubSecret, err := r.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), hubConfigName, metav1.GetOptions{})
 	if err != nil {
 		reqLogger.Error(err, "Failed to get hub secret")
 		return reconcile.Result{}, err
