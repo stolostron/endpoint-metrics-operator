@@ -3,6 +3,7 @@
 package observabilityendpoint
 
 import (
+	"context"
 	"os"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
@@ -23,7 +24,7 @@ var (
 )
 
 func deleteMonitoringClusterRoleBinding(client kubernetes.Interface) error {
-	rb, err := client.RbacV1().ClusterRoleBindings().Get(clusterRoleBindingName, metav1.GetOptions{})
+	rb, err := client.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info(err.Error(), ": clusterrolebinding already deleted")
@@ -32,7 +33,7 @@ func deleteMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 		log.Error(err, ": Failed to check the clusterrolebinding")
 		return err
 	}
-	err = client.RbacV1().ClusterRoleBindings().Delete(rb.GetName(), &metav1.DeleteOptions{})
+	err = client.RbacV1().ClusterRoleBindings().Delete(context.TODO(), rb.GetName(), metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, ": Error deleting clusterrolebinding")
 		return err
@@ -42,7 +43,7 @@ func deleteMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 }
 
 func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
-	_, err := client.RbacV1().ClusterRoleBindings().Get(clusterRoleBindingName, metav1.GetOptions{})
+	_, err := client.RbacV1().ClusterRoleBindings().Get(context.TODO(), clusterRoleBindingName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			rb := &rbacv1.ClusterRoleBinding{
@@ -66,7 +67,7 @@ func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 					},
 				},
 			}
-			_, err = client.RbacV1().ClusterRoleBindings().Create(rb)
+			_, err = client.RbacV1().ClusterRoleBindings().Create(context.TODO(), rb, metav1.CreateOptions{})
 			if err == nil {
 				log.Info("clusterrolebinding created")
 			} else {
@@ -84,7 +85,7 @@ func createMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 
 func deleteCAConfigmap(client kubernetes.Interface) error {
 	//TBD
-	cm, err := client.CoreV1().ConfigMaps(namespace).Get(caConfigmapName, metav1.GetOptions{})
+	cm, err := client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), caConfigmapName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info(err.Error(), ": configmap already deleted")
@@ -93,7 +94,7 @@ func deleteCAConfigmap(client kubernetes.Interface) error {
 		log.Error(err, ": Failed to check the configmap")
 		return err
 	}
-	err = client.CoreV1().ConfigMaps(namespace).Delete(cm.GetName(), &metav1.DeleteOptions{})
+	err = client.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), cm.GetName(), metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, ": Error deleting configmap")
 		return err
@@ -103,7 +104,7 @@ func deleteCAConfigmap(client kubernetes.Interface) error {
 }
 
 func createCAConfigmap(client kubernetes.Interface) error {
-	_, err := client.CoreV1().ConfigMaps(namespace).Get(caConfigmapName, metav1.GetOptions{})
+	_, err := client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), caConfigmapName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm := &v1.ConfigMap{
@@ -117,7 +118,7 @@ func createCAConfigmap(client kubernetes.Interface) error {
 				},
 				Data: map[string]string{"service-ca.crt": ""},
 			}
-			_, err = client.CoreV1().ConfigMaps(namespace).Create(cm)
+			_, err = client.CoreV1().ConfigMaps(namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 			if err == nil {
 				log.Info("Configmap created")
 			} else {
@@ -136,7 +137,7 @@ func createCAConfigmap(client kubernetes.Interface) error {
 
 // getClusterID is used to get the cluster uid
 func getClusterID(ocpClient ocpClientSet.Interface) (string, error) {
-	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get("version", metav1.GetOptions{})
+	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get(context.TODO(), "version", metav1.GetOptions{})
 	if err != nil {
 		log.Error(err, "Failed to get clusterVersion")
 		return "", err

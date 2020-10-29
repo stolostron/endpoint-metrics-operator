@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
+	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
@@ -209,7 +209,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 
 	// If no prometheus service found, set status as NotSupported
-	_, err = r.kubeClient.CoreV1().Services(promNamespace).Get(promSvcName, metav1.GetOptions{})
+	_, err = r.kubeClient.CoreV1().Services(promNamespace).Get(context.TODO(), promSvcName, metav1.GetOptions{})
 	if err != nil {
 		reqLogger.Error(err, "Failed to get prometheus resource")
 		reportStatus(r.client, instance, "NotSupported")
@@ -219,7 +219,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	// hubSecret is in ManifestWork, Read from local k8s client
 	// ocp_resource.go
 	//	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
-	hubSecret, err := r.kubeClient.CoreV1().Secrets(namespace).Get(hubConfigName, metav1.GetOptions{}) //(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
+	hubSecret, err := r.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), hubConfigName, metav1.GetOptions{}) //(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
 	if err != nil {
 		reqLogger.Error(err, "Failed to get hub secret")
 		return reconcile.Result{}, err
