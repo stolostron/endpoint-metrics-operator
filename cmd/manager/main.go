@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
+	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/controller"
 	"github.com/open-cluster-management/endpoint-metrics-operator/version"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"

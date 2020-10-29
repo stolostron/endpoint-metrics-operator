@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
+	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )

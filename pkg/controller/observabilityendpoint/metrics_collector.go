@@ -3,6 +3,7 @@
 package observabilityendpoint
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -173,10 +174,10 @@ func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 	}
 	list := getMetricsWhitelist(client)
 	deployment := createDeployment(hub.ClusterName, clusterID, hub.Endpoint, configs, list, replicaCount)
-	found, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
+	found, err := client.AppsV1().Deployments(namespace).Get(context.TODO(), metricsCollectorName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			_, err = client.AppsV1().Deployments(namespace).Create(deployment)
+			_, err = client.AppsV1().Deployments(namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 			if err != nil {
 				log.Error(err, "Failed to create metrics-collector deployment")
 				return false, err
@@ -189,7 +190,7 @@ func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 	} else {
 		if !reflect.DeepEqual(found.Spec, deployment.Spec) {
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			_, err = client.AppsV1().Deployments(namespace).Update(deployment)
+			_, err = client.AppsV1().Deployments(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
 			if err != nil {
 				log.Error(err, "Failed to update metrics-collector deployment")
 				return false, err
@@ -201,7 +202,7 @@ func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
 }
 
 func deleteMetricsCollector(client kubernetes.Interface) error {
-	_, err := client.AppsV1().Deployments(namespace).Get(metricsCollectorName, metav1.GetOptions{})
+	_, err := client.AppsV1().Deployments(namespace).Get(context.TODO(), metricsCollectorName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("The metrics collector deployment does not exist")
@@ -211,7 +212,7 @@ func deleteMetricsCollector(client kubernetes.Interface) error {
 		return err
 	}
 	// TODO: Should we set Replicas to zero instead?
-	err = client.AppsV1().Deployments(namespace).Delete(metricsCollectorName, &metav1.DeleteOptions{})
+	err = client.AppsV1().Deployments(namespace).Delete(context.TODO(), metricsCollectorName, metav1.DeleteOptions{})
 	if err != nil {
 		log.Error(err, "Failed to delete the metrics collector deployment")
 		return err
@@ -224,7 +225,7 @@ func int32Ptr(i int32) *int32 { return &i }
 
 func getMetricsWhitelist(client kubernetes.Interface) MetricsWhitelist {
 	l := &MetricsWhitelist{}
-	cm, err := client.CoreV1().ConfigMaps(namespace).Get(metricsConfigMapName, metav1.GetOptions{})
+	cm, err := client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), metricsConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		log.Error(err, "Failed to get configmap")
 	} else {

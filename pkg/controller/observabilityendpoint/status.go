@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
+	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,7 +51,7 @@ func reportStatus(c client.Client, i *oav1beta1.ObservabilityAddon, t string) {
 
 func reportStatusToMCAddon(c client.Client, i *addonv1alpha1.ManagedClusterAddOn, t string) {
 	if t == "NotSupported" {
-		i.Status.Conditions = []addonv1alpha1.Condition{
+		i.Status.Conditions = []metav1.Condition{
 			{
 				Type:               t,
 				Status:             metav1.ConditionTrue,
@@ -62,7 +62,7 @@ func reportStatusToMCAddon(c client.Client, i *addonv1alpha1.ManagedClusterAddOn
 		}
 	} else {
 		// If Supported Change status for type Available, Degraded and Disabled
-		var conditionArray = make([]addonv1alpha1.Condition, 3)
+		var conditionArray = make([]metav1.Condition, 3)
 		count := 0
 		for key := range conditions {
 			if key == "NotSupported" {
@@ -74,7 +74,7 @@ func reportStatusToMCAddon(c client.Client, i *addonv1alpha1.ManagedClusterAddOn
 			} else {
 				status = metav1.ConditionFalse
 			}
-			conditionArray[count] = addonv1alpha1.Condition{
+			conditionArray[count] = metav1.Condition{
 				Type:               conditions[key]["type"],
 				Status:             status,
 				LastTransitionTime: metav1.NewTime(time.Now()),
