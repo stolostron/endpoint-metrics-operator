@@ -7,12 +7,14 @@ import (
 	"os"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	"gopkg.in/yaml.v2"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -24,10 +26,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
+	hubKubeConfigPath       = "/spoke/hub-kubeconfig/kubeconfig"
 	hubConfigName           = "hub-info-secret"
 	obAddonName             = "observability-addon"
 	mcoCRName               = "observability"
@@ -60,7 +64,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	// Create kube client
-	kubeClient, err := createKubeClient()
+	kubeClient, err := createHubClient()
 	if err != nil {
 		log.Error(err, "Failed to create the Kubernetes client")
 		return nil
@@ -72,10 +76,10 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		return nil
 	}
 	return &ReconcileObservabilityAddon{
-		client:     mgr.GetClient(),
-		kubeClient: kubeClient,
-		ocpClient:  ocpClient,
-		scheme:     mgr.GetScheme()}
+		client:    mgr.GetClient(),
+		hubClient: kubeClient,
+		ocpClient: ocpClient,
+		scheme:    mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -86,44 +90,22 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == obAddonName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
-				return !e.DeleteStateUnknown
-			}
-			return false
-		},
-	}
-
-	mcoPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == mcoCRName {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == mcoCRName {
-				return true
-			}
-			return false
-		},
-	}
-
-	// Watch for changes to primary resource ObservabilityAddon
-	err = c.Watch(&source.Kind{Type: &oav1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, pred)
+	err = watchHubInfo(c)
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource MCO CR
-	err = c.Watch(&source.Kind{Type: &oav1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, mcoPred)
+	err = watchCertificates(c)
+	if err != nil {
+		return err
+	}
+
+	err = watchWhitelist(c)
+	if err != nil {
+		return err
+	}
+
+	err = watchMetricsCollector(c)
 	if err != nil {
 		return err
 	}
@@ -138,10 +120,10 @@ var _ reconcile.Reconciler = &ReconcileObservabilityAddon{}
 type ReconcileObservabilityAddon struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client     client.Client
-	scheme     *runtime.Scheme
-	kubeClient kubernetes.Interface
-	ocpClient  ocpClientSet.Interface
+	client    client.Client
+	scheme    *runtime.Scheme
+	hubClient client.Client
+	ocpClient ocpClientSet.Interface
 }
 
 // Reconcile reads that state of the cluster for a ObservabilityAddon object and makes changes based on the state read
@@ -153,24 +135,30 @@ type ReconcileObservabilityAddon struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling ObservabilityAddon")
+	reqLogger.Info("Reconciling")
 
 	// Fetch the ObservabilityAddon instance
-	instance := &oav1beta1.ObservabilityAddon{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, instance)
+	obsAddon := &oav1beta1.ObservabilityAddon{}
+	err := r.hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, obsAddon)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get observabilityaddon", "namespace", hubNamespace)
+		return reconcile.Result{}, err
+	}
+
+	hubSecret := &corev1.Secret{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: namespace}, hubSecret)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	hubInfo := &HubInfo{}
+	err = yaml.Unmarshal(hubSecret.Data[hubInfoKey], &hubInfo)
+	if err != nil {
+		log.Error(err, "Failed to unmarshal hub info")
 		return reconcile.Result{}, err
 	}
 
 	// Init finalizers
-	deleted, err := r.initFinalization(instance)
+	deleted, err := r.initFinalization(*hubInfo, obsAddon)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -180,28 +168,14 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 
 	// Fetch the ManagedClusterAddon instance
 	mcaInstance := &addonv1alpha1.ManagedClusterAddOn{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: managedClusterAddonName,
+	err = r.hubClient.Get(context.TODO(), types.NamespacedName{Name: managedClusterAddonName,
 		Namespace: hubNamespace}, mcaInstance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			reqLogger.Info("Cannot find ManagedClusterAddOn ", managedClusterAddonName, "namespace ", hubNamespace)
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
-	}
-
-	mcoInstance := &oav1beta1.MultiClusterObservability{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: mcoCRName, Namespace: ""}, mcoInstance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			reqLogger.Info("Cannot find mco observability")
+			reqLogger.Info("Cannot find ManagedClusterAddOn ", "name", managedClusterAddonName, "namespace ", hubNamespace)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -209,54 +183,53 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 
 	// If no prometheus service found, set status as NotSupported
-	_, err = r.kubeClient.CoreV1().Services(promNamespace).Get(context.TODO(), promSvcName, metav1.GetOptions{})
+	promSvc := &corev1.Service{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: promSvcName,
+		Namespace: promNamespace}, promSvc)
 	if err != nil {
-		reqLogger.Error(err, "Failed to get prometheus resource")
-		reportStatus(r.client, instance, "NotSupported")
-		reportStatusToMCAddon(r.client, mcaInstance, "NotSupported")
-		return reconcile.Result{}, nil
-	}
-	// hubSecret is in ManifestWork, Read from local k8s client
-	// ocp_resource.go
-	//	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: request.Namespace}, hubSecret)
-	hubSecret, err := r.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), hubConfigName, metav1.GetOptions{})
-	if err != nil {
-		reqLogger.Error(err, "Failed to get hub secret")
+		if errors.IsNotFound(err) {
+			reqLogger.Error(err, "OCP prometheus service does not exist")
+			reportStatus(r.hubClient, obsAddon, "NotSupported")
+			reportStatusToMCAddon(r.hubClient, mcaInstance, "NotSupported")
+			return reconcile.Result{}, nil
+		}
+		reqLogger.Error(err, "Failed to check prometheus resource")
 		return reconcile.Result{}, err
 	}
+
 	clusterID, err := getClusterID(r.ocpClient)
 	if err != nil {
 		// OCP 3.11 has no cluster id, set it as empty string
 		clusterID = ""
 	}
 
-	err = createMonitoringClusterRoleBinding(r.kubeClient)
+	err = createMonitoringClusterRoleBinding(r.client)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	err = createCAConfigmap(r.kubeClient)
+	err = createCAConfigmap(r.client)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if mcoInstance.Spec.ObservabilityAddonSpec.EnableMetrics {
-		created, err := updateMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec, 1)
+	if hubInfo.EnableMetrics {
+		created, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 1)
 		if err != nil {
 			reportStatusToMCAddon(r.client, mcaInstance, "Degraded")
 			return reconcile.Result{}, err
 		}
 		if created {
-			reportStatus(r.client, instance, "Ready")
-			reportStatusToMCAddon(r.client, mcaInstance, "Ready")
+			reportStatus(r.hubClient, obsAddon, "Ready")
+			reportStatusToMCAddon(r.hubClient, mcaInstance, "Ready")
 		}
 	} else {
-		deleted, err := updateMetricsCollector(r.kubeClient, hubSecret, clusterID, *mcoInstance.Spec.ObservabilityAddonSpec, 0)
+		deleted, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 0)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		if deleted {
-			reportStatus(r.client, instance, "Disabled")
-			reportStatusToMCAddon(r.client, mcaInstance, "Disabled")
+			reportStatus(r.hubClient, obsAddon, "Disabled")
+			reportStatusToMCAddon(r.hubClient, mcaInstance, "Disabled")
 		}
 	}
 
@@ -265,26 +238,26 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 }
 
 func (r *ReconcileObservabilityAddon) initFinalization(
-	ep *oav1beta1.ObservabilityAddon) (bool, error) {
-	if ep.GetDeletionTimestamp() != nil && contains(ep.GetFinalizers(), epFinalizer) {
+	hubInfo HubInfo, ep *oav1beta1.ObservabilityAddon) (bool, error) {
+	if hubInfo.DeleteFlag && contains(ep.GetFinalizers(), epFinalizer) {
 		log.Info("To revert configurations")
-		err := deleteMetricsCollector(r.kubeClient)
+		err := deleteMetricsCollector(r.client)
 		if err != nil {
 			return false, err
 		}
 		// Should we return bool from the delete functions for crb and cm? What is it used for? Should we use the bool before removing finalizer?
 		//SHould we return true if metricscollector is not found as that means  metrics collector is not present?
 		//Moved this part up as we need to clean up cm and crb before we remove the finalizer - is that the right way to do it?
-		err = deleteMonitoringClusterRoleBinding(r.kubeClient)
+		err = deleteMonitoringClusterRoleBinding(r.client)
 		if err != nil {
 			return false, err
 		}
-		err = deleteCAConfigmap(r.kubeClient)
+		err = deleteCAConfigmap(r.client)
 		if err != nil {
 			return false, err
 		}
 		ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
-		err = r.client.Update(context.TODO(), ep)
+		err = r.hubClient.Update(context.TODO(), ep)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
 			return false, err
@@ -294,7 +267,7 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 	}
 	if !contains(ep.GetFinalizers(), epFinalizer) {
 		ep.SetFinalizers(append(ep.GetFinalizers(), epFinalizer))
-		err := r.client.Update(context.TODO(), ep)
+		err := r.hubClient.Update(context.TODO(), ep)
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to endpointmonitoring", "namespace", ep.Namespace)
 			return false, err
@@ -341,20 +314,112 @@ func createOCPClient() (ocpClientSet.Interface, error) {
 	return ocpClient, err
 }
 
-func createKubeClient() (kubernetes.Interface, error) {
+func createHubClient() (client.Client, error) {
 	// create the config from the path
-	config, err := clientcmd.BuildConfigFromFlags("", "")
+	config, err := clientcmd.BuildConfigFromFlags("", hubKubeConfigPath)
 	if err != nil {
 		log.Error(err, "Failed to create the config")
 		return nil, err
 	}
 
-	// generate the client based off of the config
-	kubeClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Error(err, "Failed to create kube client")
+	s := scheme.Scheme
+	if err := apis.AddToScheme(s); err != nil {
 		return nil, err
 	}
 
-	return kubeClient, err
+	if err := addonv1alpha1.AddToScheme(s); err != nil {
+		return nil, err
+	}
+
+	// generate the client based off of the config
+	hubClient, err := client.New(config, client.Options{Scheme: s})
+	if err != nil {
+		log.Error(err, "Failed to create hub client")
+		return nil, err
+	}
+
+	return hubClient, err
+}
+
+func watchHubInfo(c controller.Controller) error {
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == hubConfigName && e.Meta.GetNamespace() == namespace {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == hubConfigName && e.MetaNew.GetNamespace() == namespace &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+	}
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
+}
+
+func watchCertificates(c controller.Controller) error {
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == mtlsCertName && e.Meta.GetNamespace() == namespace {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == mtlsCertName && e.MetaNew.GetNamespace() == namespace &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+	}
+	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
+
+}
+
+func watchWhitelist(c controller.Controller) error {
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == metricsConfigMapName && e.Meta.GetNamespace() == namespace {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == metricsConfigMapName && e.MetaNew.GetNamespace() == namespace &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+	}
+	return c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, pred)
+}
+
+func watchMetricsCollector(c controller.Controller) error {
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == metricsCollectorName && e.Meta.GetNamespace() == namespace {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == metricsCollectorName && e.MetaNew.GetNamespace() == namespace &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == metricsCollectorName && e.Meta.GetNamespace() == namespace {
+				return true
+			}
+			return false
+		},
+	}
+	return c.Watch(&source.Kind{Type: &v1.Deployment{}}, &handler.EnqueueRequestForObject{}, pred)
 }

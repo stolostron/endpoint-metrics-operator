@@ -12,10 +12,10 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	kubefakeclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
@@ -23,30 +23,26 @@ import (
 )
 
 const (
-	name          = "observability-addon"
-	testNamespace = "test-ns"
-	hubInfoName   = "hub-info-secret"
+	name            = "observability-addon"
+	testNamespace   = "test-ns"
+	testHubNamspace = "test-hub-ns"
+	hubInfoName     = "hub-info-secret"
 )
+
+func newPromSvc() *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      promSvcName,
+			Namespace: promNamespace,
+		},
+	}
+}
 
 func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
-			Namespace: testNamespace,
-		},
-	}
-}
-
-func newMCOResource() *oav1beta1.MultiClusterObservability {
-	return &oav1beta1.MultiClusterObservability{
-		ObjectMeta: v1.ObjectMeta{
-			Name: mcoCRName,
-		},
-		Spec: oav1beta1.MultiClusterObservabilitySpec{
-			ObservabilityAddonSpec: &oav1beta1.ObservabilityAddonSpec{
-				EnableMetrics: true,
-				Interval:      60,
-			},
+			Namespace: testHubNamspace,
 		},
 	}
 }
@@ -59,56 +55,74 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      managedClusterAddonName,
-			Namespace: namespace,
+			Namespace: testHubNamspace,
 		},
 	}
 }
 
-func newHubInfoSecret() *corev1.Secret {
+func newHubInfoSecret(enableMetrics bool) *corev1.Secret {
+	data := []byte(`
+cluster-name: "test-cluster"
+endpoint: "http://test-endpoint"
+enable-metrics: true
+internal: 60
+delete-flag: false
+`)
+	if !enableMetrics {
+		data = []byte(`
+cluster-name: "test-cluster"
+endpoint: "http://test-endpoint"
+enable-metrics: false
+internal: 60
+delete-flag: false
+`)
+	}
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: corev1.SchemeGroupVersion.String(),
+			APIVersion: v1.SchemeGroupVersion.String(),
 			Kind:       "Secret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubInfoName,
-			Namespace: namespace,
+			Name:      hubConfigName,
+			Namespace: testNamespace,
 		},
-		Data: map[string][]byte{},
+		Data: map[string][]byte{
+			hubInfoKey: data,
+		},
 	}
+}
+
+func init() {
+	logf.SetLogger(logf.ZapLogger(true))
+
+	s := scheme.Scheme
+	addonv1alpha1.AddToScheme(s)
+	apis.AddToScheme(s)
+
+	namespace = testNamespace
+	hubNamespace = testHubNamspace
 }
 
 func TestObservabilityAddonController(t *testing.T) {
 
-	s := scheme.Scheme
-	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
-	}
-
 	oa := newObservabilityAddon()
-	mcoa := newMCOResource()
 	mcaddon := newManagedClusterAddon()
-	objs := []runtime.Object{oa, hubInfo, mcoa, mcaddon}
+	hubObjs := []runtime.Object{oa, mcaddon}
+	objs := []runtime.Object{newHubInfoSecret(true), newPromSvc(), getWhitelistCM()}
 
-	hubInfo := newHubInfoSecret()
-
-	kubeClient := kubefakeclient.NewSimpleClientset(hubInfo)
+	hubClient := fake.NewFakeClient(hubObjs...)
 	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
-
-	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
-	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, mcoa)
-	s.AddKnownTypes(addonv1alpha1.SchemeGroupVersion, mcaddon)
 	c := fake.NewFakeClient(objs...)
+
 	r := &ReconcileObservabilityAddon{
-		client:     c,
-		scheme:     s,
-		kubeClient: kubeClient,
-		ocpClient:  ocpClient,
+		client:    c,
+		hubClient: hubClient,
+		ocpClient: ocpClient,
 	}
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 	}
 	_, err := r.Reconcile(req)
@@ -116,31 +130,12 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	c = fake.NewFakeClient()
-	r = &ReconcileObservabilityAddon{
-		client:     c,
-		scheme:     s,
-		kubeClient: kubeClient,
-		ocpClient:  ocpClient,
-	}
-	req = reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      name,
-			Namespace: testNamespace,
-		},
-	}
-	_, err = r.Reconcile(req)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
-	}
-
-	mcoa.Spec.ObservabilityAddonSpec.EnableMetrics = false
+	objs = []runtime.Object{newHubInfoSecret(false)}
 	c = fake.NewFakeClient(objs...)
 	r = &ReconcileObservabilityAddon{
-		client:     c,
-		scheme:     s,
-		kubeClient: kubeClient,
-		ocpClient:  ocpClient,
+		client:    c,
+		hubClient: hubClient,
+		ocpClient: ocpClient,
 	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -156,26 +151,20 @@ func TestObservabilityAddonController(t *testing.T) {
 
 func TestObservabilityAddonControllerFinalizer(t *testing.T) {
 
-	s := scheme.Scheme
-
-	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
-	}
-
 	oa := newObservabilityAddon()
 	oa.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
 	oa.ObjectMeta.Finalizers = []string{epFinalizer, "test-finalizerr"}
+	mcaddon := newManagedClusterAddon()
 
-	objs := []runtime.Object{oa, hubInfo}
-	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
+	hubObjs := []runtime.Object{oa, mcaddon}
+	objs := []runtime.Object{newHubInfoSecret(true), newPromSvc(), getWhitelistCM()}
 	c := fake.NewFakeClient(objs...)
-	kubeClient := kubefakeclient.NewSimpleClientset([]runtime.Object{}...)
+	hubClient := fake.NewFakeClient(hubObjs...)
 	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
 	r := &ReconcileObservabilityAddon{
-		client:     c,
-		scheme:     s,
-		kubeClient: kubeClient,
-		ocpClient:  ocpClient,
+		client:    c,
+		hubClient: hubClient,
+		ocpClient: ocpClient,
 	}
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{

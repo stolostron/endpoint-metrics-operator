@@ -8,8 +8,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	fakeocpclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -26,24 +25,24 @@ var (
 )
 
 func TestCreateDeleteCAConfigmap(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset([]runtime.Object{}...)
-	err := createCAConfigmap(kubeClient)
+	c := fake.NewFakeClient()
+	err := createCAConfigmap(c)
 	if err != nil {
 		t.Fatalf("Failed to create CA configmap: (%v)", err)
 	}
-	err = deleteCAConfigmap(kubeClient)
+	err = deleteCAConfigmap(c)
 	if err != nil {
 		t.Fatalf("Failed to delete CA configmap: (%v)", err)
 	}
 }
 
 func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
-	kubeClient := fake.NewSimpleClientset([]runtime.Object{}...)
-	err := createMonitoringClusterRoleBinding(kubeClient)
+	c := fake.NewFakeClient()
+	err := createMonitoringClusterRoleBinding(c)
 	if err != nil {
 		t.Fatalf("Failed to create clusterrolebinding: (%v)", err)
 	}
-	err = deleteMonitoringClusterRoleBinding(kubeClient)
+	err = deleteMonitoringClusterRoleBinding(c)
 
 	if err != nil {
 		t.Fatalf("Failed to delete clusterrolebinding: (%v)", err)
