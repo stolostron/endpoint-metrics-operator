@@ -197,25 +197,9 @@ func updateMetricsCollector(c client.Client, hubInfo HubInfo,
 			log.Info("Updated metrics-collector deployment ")
 		} else {
 			if forceRestart {
-				podList := &corev1.PodList{}
-				options := []client.ListOption{
-					client.InNamespace(namespace),
-					client.MatchingLabels(map[string]string{
-						selectorKey: selectorValue,
-					}),
-				}
-				err := c.List(context.TODO(), podList, options...)
-				if err != nil && errors.IsNotFound(err) {
-					log.Error(err, "Failed to list pods of metrics collector")
+				err := deletePod(c)
+				if err != nil {
 					return false, err
-				}
-				for _, pod := range podList.Items {
-					err := c.Delete(context.TODO(), &pod)
-					if err != nil {
-						log.Error(err, "Failed to delete pod", "name", pod.Name)
-						return false, err
-					}
-					log.Info("Deleted pod to restart", "name", pod.Name)
 				}
 			}
 		}
@@ -262,4 +246,29 @@ func getMetricsWhitelist(client client.Client) MetricsWhitelist {
 		}
 	}
 	return *l
+}
+
+func deletePod(c client.Client) error {
+	podList := &corev1.PodList{}
+	options := []client.ListOption{
+		client.InNamespace(namespace),
+		client.MatchingLabels(map[string]string{
+			selectorKey: selectorValue,
+		}),
+	}
+	err := c.List(context.TODO(), podList, options...)
+	if err != nil && errors.IsNotFound(err) {
+		log.Error(err, "Failed to list pods of metrics collector")
+		return err
+	}
+	for index := range podList.Items {
+		pod := podList.Items[index]
+		err := c.Delete(context.TODO(), &pod)
+		if err != nil {
+			log.Error(err, "Failed to delete pod", "name", pod.Name)
+			return err
+		}
+		log.Info("Deleted pod to restart", "name", pod.Name)
+	}
+	return nil
 }
