@@ -195,12 +195,11 @@ func updateMetricsCollector(c client.Client, hubInfo HubInfo,
 				return false, err
 			}
 			log.Info("Updated metrics-collector deployment ")
-		} else {
-			if forceRestart {
-				err := deletePod(c)
-				if err != nil {
-					return false, err
-				}
+		}
+		if forceRestart {
+			err := deletePod(c)
+			if err != nil {
+				return false, err
 			}
 		}
 	}
