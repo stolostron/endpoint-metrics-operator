@@ -26,7 +26,7 @@ var (
 )
 
 func deleteMonitoringClusterRoleBinding(client client.Client) error {
-	rb := &rbacv1.ClusterRole{}
+	rb := &rbacv1.ClusterRoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleBindingName,
 		Namespace: ""}, rb)
 	if err != nil {
@@ -47,15 +47,14 @@ func deleteMonitoringClusterRoleBinding(client client.Client) error {
 }
 
 func createMonitoringClusterRoleBinding(client client.Client) error {
-	rb := &rbacv1.ClusterRole{}
+	rb := &rbacv1.ClusterRoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleBindingName,
 		Namespace: ""}, rb)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			rb := &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      clusterRoleBindingName,
-					Namespace: namespace,
+					Name: clusterRoleBindingName,
 					Annotations: map[string]string{
 						ownerLabelKey: ownerLabelValue,
 					},

@@ -171,15 +171,9 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	err = r.hubClient.Get(context.TODO(), types.NamespacedName{Name: managedClusterAddonName,
 		Namespace: hubNamespace}, mcaInstance)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			reqLogger.Info("Cannot find ManagedClusterAddOn ", "name", managedClusterAddonName, "namespace ", hubNamespace)
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get managedclusteraddon", "namespace", hubNamespace)
 		return reconcile.Result{}, err
+
 	}
 
 	// If no prometheus service found, set status as NotSupported
@@ -240,7 +234,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 func (r *ReconcileObservabilityAddon) initFinalization(
 	hubInfo HubInfo, ep *oav1beta1.ObservabilityAddon) (bool, error) {
 	if hubInfo.DeleteFlag && contains(ep.GetFinalizers(), epFinalizer) {
-		log.Info("To revert configurations")
+		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(r.client)
 		if err != nil {
 			return false, err
@@ -259,20 +253,20 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 		ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
 		err = r.hubClient.Update(context.TODO(), ep)
 		if err != nil {
-			log.Error(err, "Failed to remove finalizer to endpointmonitoring", "namespace", ep.Namespace)
+			log.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", ep.Namespace)
 			return false, err
 		}
-		log.Info("Finalizer removed from endpointmonitoring resource")
+		log.Info("Finalizer removed from observabilityaddon resource")
 		return true, nil
 	}
 	if !contains(ep.GetFinalizers(), epFinalizer) {
 		ep.SetFinalizers(append(ep.GetFinalizers(), epFinalizer))
 		err := r.hubClient.Update(context.TODO(), ep)
 		if err != nil {
-			log.Error(err, "Failed to add finalizer to endpointmonitoring", "namespace", ep.Namespace)
+			log.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", ep.Namespace)
 			return false, err
 		}
-		log.Info("Finalizer added to endpointmonitoring resource")
+		log.Info("Finalizer added to observabilityaddon resource")
 	}
 	return false, nil
 }

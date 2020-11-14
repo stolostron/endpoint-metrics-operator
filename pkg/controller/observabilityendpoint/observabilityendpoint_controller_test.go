@@ -3,11 +3,15 @@
 package observabilityendpoint
 
 import (
+	"context"
+	"strings"
 	"testing"
-	"time"
 
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
+	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -60,7 +64,7 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	}
 }
 
-func newHubInfoSecret(enableMetrics bool) *corev1.Secret {
+func newHubInfoSecret(deleteFlag bool, enableMetrics bool) *corev1.Secret {
 	data := []byte(`
 cluster-name: "test-cluster"
 endpoint: "http://test-endpoint"
@@ -68,7 +72,15 @@ enable-metrics: true
 internal: 60
 delete-flag: false
 `)
-	if !enableMetrics {
+	if deleteFlag {
+		data = []byte(`
+cluster-name: "test-cluster"
+endpoint: "http://test-endpoint"
+enable-metrics: true
+internal: 60
+delete-flag: true
+`)
+	} else if !enableMetrics {
 		data = []byte(`
 cluster-name: "test-cluster"
 endpoint: "http://test-endpoint"
@@ -105,10 +117,12 @@ func init() {
 
 func TestObservabilityAddonController(t *testing.T) {
 
-	oa := newObservabilityAddon()
+	oba := newObservabilityAddon()
 	mcaddon := newManagedClusterAddon()
-	hubObjs := []runtime.Object{oa, mcaddon}
-	objs := []runtime.Object{newHubInfoSecret(true), newPromSvc(), getWhitelistCM()}
+	hubObjs := []runtime.Object{}
+	hubInfo := newHubInfoSecret(false, true)
+	whiteList := getWhitelistCM()
+	objs := []runtime.Object{hubInfo, whiteList}
 
 	hubClient := fake.NewFakeClient(hubObjs...)
 	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
@@ -119,61 +133,186 @@ func TestObservabilityAddonController(t *testing.T) {
 		hubClient: hubClient,
 		ocpClient: ocpClient,
 	}
+
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
-			Name:      name,
+			Name:      "install",
 			Namespace: testNamespace,
 		},
 	}
 	_, err := r.Reconcile(req)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
+	if err == nil {
+		t.Fatalf("reconcile: miss the error for missing obervabilityaddon")
 	}
 
-	objs = []runtime.Object{newHubInfoSecret(false)}
-	c = fake.NewFakeClient(objs...)
-	r = &ReconcileObservabilityAddon{
-		client:    c,
-		hubClient: hubClient,
-		ocpClient: ocpClient,
+	err = hubClient.Create(context.TODO(), oba)
+	if err != nil {
+		t.Fatalf("failed to create oba to install: (%v)", err)
 	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
-			Name:      name,
+			Name:      "install",
+			Namespace: testNamespace,
+		},
+	}
+	_, err = r.Reconcile(req)
+	if err == nil {
+		t.Fatalf("reconcile: miss the error for missing managedclusteraddon")
+	}
+
+	err = hubClient.Create(context.TODO(), mcaddon)
+	if err != nil {
+		t.Fatalf("failed to create mcaddon to install: (%v)", err)
+	}
+	req = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      "install",
 			Namespace: testNamespace,
 		},
 	}
 	_, err = r.Reconcile(req)
 	if err != nil {
-		t.Fatalf("2nd reconcile: (%v)", err)
+		t.Fatalf("reconcile: (%v)", err)
 	}
-}
 
-func TestObservabilityAddonControllerFinalizer(t *testing.T) {
-
-	oa := newObservabilityAddon()
-	oa.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
-	oa.ObjectMeta.Finalizers = []string{epFinalizer, "test-finalizerr"}
-	mcaddon := newManagedClusterAddon()
-
-	hubObjs := []runtime.Object{oa, mcaddon}
-	objs := []runtime.Object{newHubInfoSecret(true), newPromSvc(), getWhitelistCM()}
-	c := fake.NewFakeClient(objs...)
-	hubClient := fake.NewFakeClient(hubObjs...)
-	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
-	r := &ReconcileObservabilityAddon{
-		client:    c,
-		hubClient: hubClient,
-		ocpClient: ocpClient,
+	promSvc := newPromSvc()
+	err = c.Create(context.TODO(), promSvc)
+	if err != nil {
+		t.Fatalf("failed to create prom svc to install: (%v)", err)
 	}
-	req := reconcile.Request{
+	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
-			Name:      name,
+			Name:      "install",
 			Namespace: testNamespace,
 		},
 	}
-	_, err := r.Reconcile(req)
+	_, err = r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
+	}
+	rb := &rbacv1.ClusterRoleBinding{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterRoleBindingName,
+		Namespace: ""}, rb)
+	if err != nil {
+		t.Fatalf("Required clusterrolebinding not created: (%v)", err)
+	}
+	cm := &corev1.ConfigMap{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: caConfigmapName,
+		Namespace: namespace}, cm)
+	if err != nil {
+		t.Fatalf("Required configmap not created: (%v)", err)
+	}
+	deploy := &appv1.Deployment{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, deploy)
+	if err != nil {
+		t.Fatalf("Metrics collector deployment not created: (%v)", err)
+	}
+	foundOba := &oav1beta1.ObservabilityAddon{}
+	err = hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName,
+		Namespace: hubNamespace}, foundOba)
+	if err != nil {
+		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
+	}
+	if !contains(foundOba.Finalizers, epFinalizer) {
+		t.Fatal("Finalizer not set in observabilityAddon")
+	}
+
+	r.ocpClient = fakeconfigclient.NewSimpleClientset()
+	req = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      "install",
+			Namespace: testNamespace,
+		},
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, deploy)
+	if err != nil {
+		t.Fatalf("Metrics collector deployment not created: (%v)", err)
+	}
+	commands := deploy.Spec.Template.Spec.Containers[0].Command
+	for _, cmd := range commands {
+		if strings.Contains(cmd, "clusterID=") && !strings.Contains(cmd, "test-cluster") {
+			t.Fatalf("Found wrong clusterID in command: (%s)", cmd)
+		}
+	}
+
+	err = c.Delete(context.TODO(), hubInfo)
+	if err != nil {
+		t.Fatalf("failed to delete hubinfo secret to disable: (%v)", err)
+	}
+	hubInfo = newHubInfoSecret(false, false)
+	err = c.Create(context.TODO(), hubInfo)
+	if err != nil {
+		t.Fatalf("failed to create hubinfo secret to disable: (%v)", err)
+	}
+	req = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      "disable",
+			Namespace: testNamespace,
+		},
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile for disable: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, deploy)
+	if err != nil {
+		t.Fatalf("Metrics collector deployment not created: (%v)", err)
+	}
+	if *deploy.Spec.Replicas != 0 {
+		t.Fatalf("Replicas for metrics collector deployment is not set as 0, value is (%d)", *deploy.Spec.Replicas)
+	}
+
+	err = c.Delete(context.TODO(), hubInfo)
+	if err != nil {
+		t.Fatalf("failed to delete hubinfo secret to disable: (%v)", err)
+	}
+	hubInfo = newHubInfoSecret(true, true)
+	err = c.Create(context.TODO(), hubInfo)
+	if err != nil {
+		t.Fatalf("failed to create hubinfo secret to disable: (%v)", err)
+	}
+	if err != nil {
+		t.Fatalf("failed to update hubinfo secret to delete: (%v)", err)
+	}
+	req = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      "delete",
+			Namespace: testNamespace,
+		},
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile for delete: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterRoleBindingName,
+		Namespace: ""}, rb)
+	if !errors.IsNotFound(err) {
+		t.Fatalf("Required clusterrolebinding not deleted")
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: caConfigmapName,
+		Namespace: namespace}, cm)
+	if !errors.IsNotFound(err) {
+		t.Fatalf("Required configmap not deleted")
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, deploy)
+	if !errors.IsNotFound(err) {
+		t.Fatalf("Metrics collector deployment not deleted")
+	}
+	foundOba1 := &oav1beta1.ObservabilityAddon{}
+	err = hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName,
+		Namespace: hubNamespace}, foundOba1)
+	if err != nil {
+		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
+	}
+	if contains(foundOba1.Finalizers, epFinalizer) {
+		t.Fatal("Finalizer not removed from observabilityAddon")
 	}
 }
