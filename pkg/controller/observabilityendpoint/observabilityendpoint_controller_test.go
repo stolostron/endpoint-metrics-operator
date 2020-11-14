@@ -31,7 +31,20 @@ const (
 	testNamespace   = "test-ns"
 	testHubNamspace = "test-hub-ns"
 	hubInfoName     = "hub-info-secret"
+	podName         = "metrics-collector-deployment-abc-xyz"
 )
+
+func newPod() *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				selectorKey: selectorValue,
+			},
+		},
+	}
+}
 
 func newPromSvc() *corev1.Service {
 	return &corev1.Service{
@@ -239,6 +252,27 @@ func TestObservabilityAddonController(t *testing.T) {
 		if strings.Contains(cmd, "clusterID=") && !strings.Contains(cmd, "test-cluster") {
 			t.Fatalf("Found wrong clusterID in command: (%s)", cmd)
 		}
+	}
+
+	err = c.Create(context.TODO(), newPod())
+	if err != nil {
+		t.Fatalf("Failed to create pod: (%v)", err)
+	}
+	req = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      mtlsCertName,
+			Namespace: testNamespace,
+		},
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile for update: (%v)", err)
+	}
+	pod := &corev1.Pod{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: podName,
+		Namespace: namespace}, pod)
+	if !errors.IsNotFound(err) {
+		t.Fatal("Pod not deleted")
 	}
 
 	err = c.Delete(context.TODO(), hubInfo)

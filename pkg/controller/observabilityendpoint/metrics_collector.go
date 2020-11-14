@@ -166,17 +166,17 @@ func createDeployment(clusterID string, hubInfo HubInfo,
 	}
 }
 
-func updateMetricsCollector(client client.Client, hubInfo HubInfo,
-	clusterID string, replicaCount int32) (bool, error) {
+func updateMetricsCollector(c client.Client, hubInfo HubInfo,
+	clusterID string, replicaCount int32, forceRestart bool) (bool, error) {
 
-	list := getMetricsWhitelist(client)
+	list := getMetricsWhitelist(c)
 	deployment := createDeployment(clusterID, hubInfo, list, replicaCount)
 	found := &v1.Deployment{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
+	err := c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err = client.Create(context.TODO(), deployment)
+			err = c.Create(context.TODO(), deployment)
 			if err != nil {
 				log.Error(err, "Failed to create metrics-collector deployment")
 				return false, err
@@ -189,12 +189,35 @@ func updateMetricsCollector(client client.Client, hubInfo HubInfo,
 	} else {
 		if !reflect.DeepEqual(found.Spec, deployment.Spec) {
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			err = client.Update(context.TODO(), deployment)
+			err = c.Update(context.TODO(), deployment)
 			if err != nil {
 				log.Error(err, "Failed to update metrics-collector deployment")
 				return false, err
 			}
 			log.Info("Updated metrics-collector deployment ")
+		} else {
+			if forceRestart {
+				podList := &corev1.PodList{}
+				options := []client.ListOption{
+					client.InNamespace(namespace),
+					client.MatchingLabels(map[string]string{
+						selectorKey: selectorValue,
+					}),
+				}
+				err := c.List(context.TODO(), podList, options...)
+				if err != nil && errors.IsNotFound(err) {
+					log.Error(err, "Failed to list pods of metrics collector")
+					return false, err
+				}
+				for _, pod := range podList.Items {
+					err := c.Delete(context.TODO(), &pod)
+					if err != nil {
+						log.Error(err, "Failed to delete pod", "name", pod.Name)
+						return false, err
+					}
+					log.Info("Deleted pod to restart", "name", pod.Name)
+				}
+			}
 		}
 	}
 	return true, nil

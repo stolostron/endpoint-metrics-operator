@@ -51,19 +51,24 @@ func TestMetricsCollector(t *testing.T) {
 
 	c := fake.NewFakeClient(whitelistCM)
 	// Default deployment with instance count 1
-	_, err := updateMetricsCollector(c, *hubInfo, testClusterID, 1)
+	_, err := updateMetricsCollector(c, *hubInfo, testClusterID, 1, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 	// Update deployment to reduce instance count to zero
-	_, err = updateMetricsCollector(c, *hubInfo, testClusterID, 0)
+	_, err = updateMetricsCollector(c, *hubInfo, testClusterID, 0, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = updateMetricsCollector(c, *hubInfo, testClusterID+"-update", 1)
+	_, err = updateMetricsCollector(c, *hubInfo, testClusterID+"-update", 1, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
+	}
+
+	_, err = updateMetricsCollector(c, *hubInfo, testClusterID+"-update", 1, true)
+	if err != nil {
+		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}
 
 	err = deleteMetricsCollector(c)

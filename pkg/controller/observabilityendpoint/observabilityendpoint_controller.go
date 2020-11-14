@@ -207,7 +207,11 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	}
 
 	if hubInfo.EnableMetrics {
-		created, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 1)
+		forceRestart := false
+		if request.Name == mtlsCertName {
+			forceRestart = true
+		}
+		created, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 1, forceRestart)
 		if err != nil {
 			reportStatusToMCAddon(r.client, mcaInstance, "Degraded")
 			return reconcile.Result{}, err
@@ -217,7 +221,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			reportStatusToMCAddon(r.hubClient, mcaInstance, "Ready")
 		}
 	} else {
-		deleted, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 0)
+		deleted, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 0, false)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
