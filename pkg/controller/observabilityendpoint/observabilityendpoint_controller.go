@@ -5,6 +5,7 @@ package observabilityendpoint
 import (
 	"context"
 	"os"
+	"reflect"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	"gopkg.in/yaml.v2"
@@ -408,7 +409,9 @@ func watchMetricsCollector(c controller.Controller) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.MetaNew.GetName() == metricsCollectorName && e.MetaNew.GetNamespace() == namespace &&
 				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-				return true
+				if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec, e.ObjectOld.(*v1.Deployment).Spec) {
+					return true
+				}
 			}
 			return false
 		},
