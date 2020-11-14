@@ -44,8 +44,8 @@ const (
 )
 
 var (
-	namespace    = os.Getenv("NAMESPACE")
-	hubNamespace = os.Getenv("WATCH_NAMESPACE")
+	namespace    = os.Getenv("WATCH_NAMESPACE")
+	hubNamespace = os.Getenv("HUB_NAMESPACE")
 	log          = logf.Log.WithName("controller_observabilityaddon")
 )
 
