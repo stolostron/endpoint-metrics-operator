@@ -355,6 +355,9 @@ func watchHubInfo(c controller.Controller) error {
 			}
 			return false
 		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
 	}
 	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
 }
@@ -372,6 +375,9 @@ func watchCertificates(c controller.Controller) error {
 				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
 				return true
 			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
 		},
 	}
@@ -392,6 +398,9 @@ func watchWhitelist(c controller.Controller) error {
 				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
 				return true
 			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
 		},
 	}
