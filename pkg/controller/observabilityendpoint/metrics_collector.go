@@ -10,13 +10,12 @@ import (
 	"strconv"
 
 	"gopkg.in/yaml.v2"
-	appv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-
-	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -26,7 +25,6 @@ const (
 	metricsCollectorName = "metrics-collector-deployment"
 	selectorKey          = "component"
 	selectorValue        = "metrics-collector"
-	ocpPromURL           = "https://prometheus-k8s.openshift-monitoring.svc:9091"
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
 	mtlsCertName         = "observability-managed-cluster-certs"
@@ -34,8 +32,15 @@ const (
 	defaultInterval      = "60s"
 )
 
+const (
+	kindClusterID   = "kind-cluster-id"
+	kindClusterHost = "observatorium.hub"
+	kindClusterIP   = "172.17.0.2"
+)
+
 var (
 	collectorImage = os.Getenv("COLLECTOR_IMAGE")
+	ocpPromURL     = "https://prometheus-k8s.openshift-monitoring.svc:9091"
 )
 
 type MetricsWhitelist struct {
@@ -45,28 +50,31 @@ type MetricsWhitelist struct {
 
 // HubInfo is the struct for hub info
 type HubInfo struct {
-	ClusterName string `yaml:"cluster-name"`
-	Endpoint    string `yaml:"endpoint"`
+	ClusterName   string `yaml:"cluster-name"`
+	Endpoint      string `yaml:"endpoint"`
+	EnableMetrics bool   `yaml:"enable-metrics"`
+	Interval      int32  `yaml:"internal"`
+	DeleteFlag    bool   `yaml:"delete-flag"`
 }
 
-func createDeployment(clusterName string, clusterID string, endpoint string,
-	configs oav1beta1.ObservabilityAddonSpec, whitelist MetricsWhitelist, replicaCount int32) *appv1.Deployment {
-	interval := fmt.Sprint(configs.Interval) + "s"
-	if fmt.Sprint(configs.Interval) == "" {
+func createDeployment(clusterID string, hubInfo HubInfo,
+	whitelist MetricsWhitelist, replicaCount int32) *v1.Deployment {
+	interval := fmt.Sprint(hubInfo.Interval) + "s"
+	if fmt.Sprint(hubInfo.Interval) == "" {
 		interval = defaultInterval
 	}
 
-	volumes := []v1.Volume{
+	volumes := []corev1.Volume{
 		{
 			Name: mtlsCertName,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: mtlsCertName,
 				},
 			},
 		},
 	}
-	mounts := []v1.VolumeMount{
+	mounts := []corev1.VolumeMount{
 		{
 			Name:      mtlsCertName,
 			MountPath: "/tlscerts",
@@ -74,23 +82,33 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 	}
 	caFile := caMounthPath + "/service-ca.crt"
 	if clusterID == "" {
-		clusterID = clusterName
+		clusterID = hubInfo.ClusterName
 		// deprecated ca bundle, only used for ocp 3.11 env
 		caFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
 	} else {
-		volumes = append(volumes, v1.Volume{
+		volumes = append(volumes, corev1.Volume{
 			Name: caVolName,
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
 						Name: caConfigmapName,
 					},
 				},
 			},
 		})
-		mounts = append(mounts, v1.VolumeMount{
+		mounts = append(mounts, corev1.VolumeMount{
 			Name:      caVolName,
 			MountPath: caMounthPath,
+		})
+	}
+
+	hostAlias := []corev1.HostAlias{}
+	// patch for e2e test using kind cluster
+	if clusterID == kindClusterID {
+		ocpPromURL = "http://prometheus-k8s.openshift-monitoring.svc:9090"
+		hostAlias = append(hostAlias, corev1.HostAlias{
+			IP:        kindClusterIP,
+			Hostnames: []string{kindClusterHost},
 		})
 	}
 
@@ -102,7 +120,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 		"--from-ca-file=" + caFile,
 		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
 		"--interval=" + interval,
-		"--label=\"cluster=" + clusterName + "\"",
+		"--label=\"cluster=" + hubInfo.ClusterName + "\"",
 		"--label=\"clusterID=" + clusterID + "\"",
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 	}
@@ -112,7 +130,7 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 	for _, match := range whitelist.MatchList {
 		commands = append(commands, "--match={"+match+"}")
 	}
-	return &appv1.Deployment{
+	return &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      metricsCollectorName,
 			Namespace: namespace,
@@ -120,34 +138,35 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
-		Spec: appv1.DeploymentSpec{
+		Spec: v1.DeploymentSpec{
 			Replicas: int32Ptr(replicaCount),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					selectorKey: selectorValue,
 				},
 			},
-			Template: v1.PodTemplateSpec{
+			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						selectorKey: selectorValue,
 					},
 				},
-				Spec: v1.PodSpec{
+				Spec: corev1.PodSpec{
+					HostAliases:        hostAlias,
 					ServiceAccountName: serviceAccountName,
-					Containers: []v1.Container{
+					Containers: []corev1.Container{
 						{
 							Name:    "metrics-collector",
 							Image:   collectorImage,
 							Command: commands,
-							Env: []v1.EnvVar{
+							Env: []corev1.EnvVar{
 								{
 									Name:  "FROM",
 									Value: ocpPromURL,
 								},
 								{
 									Name:  "TO",
-									Value: endpoint,
+									Value: hubInfo.Endpoint,
 								},
 								{
 									Name:  "ID",
@@ -164,45 +183,50 @@ func createDeployment(clusterName string, clusterID string, endpoint string,
 	}
 }
 
-func updateMetricsCollector(client kubernetes.Interface, hubInfo *v1.Secret,
-	clusterID string, configs oav1beta1.ObservabilityAddonSpec, replicaCount int32) (bool, error) {
-	hub := &HubInfo{}
-	err := yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
-	if err != nil {
-		log.Error(err, "Failed to unmarshal hub info")
-		return false, err
-	}
-	list := getMetricsWhitelist(client)
-	deployment := createDeployment(hub.ClusterName, clusterID, hub.Endpoint, configs, list, replicaCount)
-	found, err := client.AppsV1().Deployments(namespace).Get(context.TODO(), metricsCollectorName, metav1.GetOptions{})
+func updateMetricsCollector(c client.Client, hubInfo HubInfo,
+	clusterID string, replicaCount int32, forceRestart bool) (bool, error) {
+
+	list := getMetricsWhitelist(c)
+	deployment := createDeployment(clusterID, hubInfo, list, replicaCount)
+	found := &v1.Deployment{}
+	err := c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			_, err = client.AppsV1().Deployments(namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
+			err = c.Create(context.TODO(), deployment)
 			if err != nil {
 				log.Error(err, "Failed to create metrics-collector deployment")
 				return false, err
 			}
 			log.Info("Created metrics-collector deployment ")
 		} else {
-			log.Error(err, "Failed to get the metrics-collector deployment")
+			log.Error(err, "Failed to check the metrics-collector deployment")
 			return false, err
 		}
 	} else {
 		if !reflect.DeepEqual(found.Spec, deployment.Spec) {
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			_, err = client.AppsV1().Deployments(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
+			err = c.Update(context.TODO(), deployment)
 			if err != nil {
 				log.Error(err, "Failed to update metrics-collector deployment")
 				return false, err
 			}
 			log.Info("Updated metrics-collector deployment ")
 		}
+		if forceRestart {
+			err := deletePod(c)
+			if err != nil {
+				return false, err
+			}
+		}
 	}
 	return true, nil
 }
 
-func deleteMetricsCollector(client kubernetes.Interface) error {
-	_, err := client.AppsV1().Deployments(namespace).Get(context.TODO(), metricsCollectorName, metav1.GetOptions{})
+func deleteMetricsCollector(client client.Client) error {
+	found := &v1.Deployment{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("The metrics collector deployment does not exist")
@@ -211,8 +235,7 @@ func deleteMetricsCollector(client kubernetes.Interface) error {
 		log.Error(err, "Failed to check the metrics collector deployment")
 		return err
 	}
-	// TODO: Should we set Replicas to zero instead?
-	err = client.AppsV1().Deployments(namespace).Delete(context.TODO(), metricsCollectorName, metav1.DeleteOptions{})
+	err = client.Delete(context.TODO(), found)
 	if err != nil {
 		log.Error(err, "Failed to delete the metrics collector deployment")
 		return err
@@ -223,9 +246,11 @@ func deleteMetricsCollector(client kubernetes.Interface) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsWhitelist(client kubernetes.Interface) MetricsWhitelist {
+func getMetricsWhitelist(client client.Client) MetricsWhitelist {
 	l := &MetricsWhitelist{}
-	cm, err := client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), metricsConfigMapName, metav1.GetOptions{})
+	cm := &corev1.ConfigMap{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: metricsConfigMapName,
+		Namespace: namespace}, cm)
 	if err != nil {
 		log.Error(err, "Failed to get configmap")
 	} else {
@@ -237,4 +262,29 @@ func getMetricsWhitelist(client kubernetes.Interface) MetricsWhitelist {
 		}
 	}
 	return *l
+}
+
+func deletePod(c client.Client) error {
+	podList := &corev1.PodList{}
+	options := []client.ListOption{
+		client.InNamespace(namespace),
+		client.MatchingLabels(map[string]string{
+			selectorKey: selectorValue,
+		}),
+	}
+	err := c.List(context.TODO(), podList, options...)
+	if err != nil && errors.IsNotFound(err) {
+		log.Error(err, "Failed to list pods of metrics collector")
+		return err
+	}
+	for index := range podList.Items {
+		pod := podList.Items[index]
+		err := c.Delete(context.TODO(), &pod)
+		if err != nil {
+			log.Error(err, "Failed to delete pod", "name", pod.Name)
+			return err
+		}
+		log.Info("Deleted pod to restart", "name", pod.Name)
+	}
+	return nil
 }

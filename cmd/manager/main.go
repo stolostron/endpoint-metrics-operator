@@ -22,8 +22,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/controller"
 	"github.com/open-cluster-management/endpoint-metrics-operator/version"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
@@ -89,7 +86,7 @@ func main() {
 
 	// Set default manager options
 	options := manager.Options{
-		Namespace:          namespace,
+		Namespace:          "",
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 	}
 
@@ -102,42 +99,8 @@ func main() {
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
 	}
 
-	// Create a new manager to provide shared dependencies and start components
-	// firstly create the config for hub cluster resource watch
-	hubCfg := cfg
-	hubCfgPath, found := os.LookupEnv("HUB_KUBECONFIG")
-	if !found {
-		log.Info("No env HUB_KUBECONFIG found")
-	} else {
-		hubCfg, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: hubCfgPath},
-			&clientcmd.ConfigOverrides{
-				ClusterInfo: clientcmdapi.Cluster{
-					Server: "",
-				},
-				CurrentContext: "",
-			}).ClientConfig()
-		if err != nil {
-			log.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	mgr, err := manager.New(hubCfg, options)
+	mgr, err := manager.New(cfg, options)
 	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
-	log.Info("Registering Components.")
-
-	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := addonv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

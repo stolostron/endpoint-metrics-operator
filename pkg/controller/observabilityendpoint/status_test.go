@@ -15,7 +15,7 @@ import (
 
 func TestReportStatus(t *testing.T) {
 	oa := newObservabilityAddon()
-	objs := []runtime.Object{oa, hubInfo}
+	objs := []runtime.Object{oa}
 	s := scheme.Scheme
 	if err := apis.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
