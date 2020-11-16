@@ -85,6 +85,9 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
+	if os.Getenv("NAMESPACE") != "" {
+		namespace = os.Getenv("NAMESPACE")
+	}
 	// Create a new controller
 	c, err := controller.New("endpointmonitoring-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -137,10 +140,6 @@ type ReconcileObservabilityAddon struct {
 func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling")
-
-	if os.Getenv("NAMESPACE") != "" {
-		namespace = os.Getenv("NAMESPACE")
-	}
 
 	// Fetch the ObservabilityAddon instance
 	obsAddon := &oav1beta1.ObservabilityAddon{}
