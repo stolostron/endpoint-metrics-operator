@@ -25,7 +25,6 @@ const (
 	metricsCollectorName = "metrics-collector-deployment"
 	selectorKey          = "component"
 	selectorValue        = "metrics-collector"
-	ocpPromURL           = "https://prometheus-k8s.openshift-monitoring.svc:9091"
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
 	mtlsCertName         = "observability-managed-cluster-certs"
@@ -33,8 +32,15 @@ const (
 	defaultInterval      = "60s"
 )
 
+const (
+	kindClusterID   = "kind-cluster-id"
+	kindClusterHost = "observatorium.hub"
+	kindClusterIP   = "172.17.0.2"
+)
+
 var (
 	collectorImage = os.Getenv("COLLECTOR_IMAGE")
+	ocpPromURL     = "https://prometheus-k8s.openshift-monitoring.svc:9091"
 )
 
 type MetricsWhitelist struct {
@@ -96,6 +102,16 @@ func createDeployment(clusterID string, hubInfo HubInfo,
 		})
 	}
 
+	hostAlias := []corev1.HostAlias{}
+	// patch for e2e test using kind cluster
+	if clusterID == kindClusterID {
+		ocpPromURL = "http://prometheus-k8s.openshift-monitoring.svc:9090"
+		hostAlias = append(hostAlias, corev1.HostAlias{
+			IP:        kindClusterIP,
+			Hostnames: []string{kindClusterHost},
+		})
+	}
+
 	commands := []string{
 		"/usr/bin/telemeter-client",
 		"--id=$(ID)",
@@ -136,6 +152,7 @@ func createDeployment(clusterID string, hubInfo HubInfo,
 					},
 				},
 				Spec: corev1.PodSpec{
+					HostAliases:        hostAlias,
 					ServiceAccountName: serviceAccountName,
 					Containers: []corev1.Container{
 						{
