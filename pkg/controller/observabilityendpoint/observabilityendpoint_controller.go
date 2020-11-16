@@ -138,6 +138,10 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling")
 
+	if os.Getenv("NAMESPACE") != "" {
+		namespace = os.Getenv("NAMESPACE")
+	}
+
 	// Fetch the ObservabilityAddon instance
 	obsAddon := &oav1beta1.ObservabilityAddon{}
 	err := r.hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, obsAddon)
