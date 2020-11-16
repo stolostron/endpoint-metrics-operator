@@ -147,6 +147,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		ocpClient: ocpClient,
 	}
 
+	// test error in reconcile if missing obervabilityaddon
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      "install",
@@ -158,6 +159,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: miss the error for missing obervabilityaddon")
 	}
 
+	// test error in reconcile if missing managedclusteraddon
 	err = hubClient.Create(context.TODO(), oba)
 	if err != nil {
 		t.Fatalf("failed to create oba to install: (%v)", err)
@@ -173,6 +175,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: miss the error for missing managedclusteraddon")
 	}
 
+	// test reconcile w/o prometheus-k8s svc
 	err = hubClient.Create(context.TODO(), mcaddon)
 	if err != nil {
 		t.Fatalf("failed to create mcaddon to install: (%v)", err)
@@ -188,6 +191,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
+	// test reconcile successfully with all resources installed and finalizer set
 	promSvc := newPromSvc()
 	err = c.Create(context.TODO(), promSvc)
 	if err != nil {
@@ -231,6 +235,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatal("Finalizer not set in observabilityAddon")
 	}
 
+	// test reconcile w/o clusterversion(OCP 3.11)
 	r.ocpClient = fakeconfigclient.NewSimpleClientset()
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -254,6 +259,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		}
 	}
 
+	// test reconcile metrics collector pod deleted if cert secret updated
 	err = c.Create(context.TODO(), newPod())
 	if err != nil {
 		t.Fatalf("Failed to create pod: (%v)", err)
@@ -275,6 +281,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatal("Pod not deleted")
 	}
 
+	// test reconcile  metrics collector's replicas set to 0 if observability disabled
 	err = c.Delete(context.TODO(), hubInfo)
 	if err != nil {
 		t.Fatalf("failed to delete hubinfo secret to disable: (%v)", err)
@@ -303,6 +310,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Replicas for metrics collector deployment is not set as 0, value is (%d)", *deploy.Spec.Replicas)
 	}
 
+	// test reconcile all resources and finalizer are removed
 	err = c.Delete(context.TODO(), hubInfo)
 	if err != nil {
 		t.Fatalf("failed to delete hubinfo secret to disable: (%v)", err)

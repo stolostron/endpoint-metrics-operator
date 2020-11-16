@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -110,6 +111,16 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	err = watchMetricsCollector(c)
+	if err != nil {
+		return err
+	}
+
+	err = watchCAConfigMap(c)
+	if err != nil {
+		return err
+	}
+
+	err = watchClusterRoleBinding(c)
 	if err != nil {
 		return err
 	}
@@ -435,4 +446,44 @@ func watchMetricsCollector(c controller.Controller) error {
 		},
 	}
 	return c.Watch(&source.Kind{Type: &v1.Deployment{}}, &handler.EnqueueRequestForObject{}, pred)
+}
+
+func watchClusterRoleBinding(c controller.Controller) error {
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == clusterRoleBindingName &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == clusterRoleBindingName {
+				return true
+			}
+			return false
+		},
+	}
+	return c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestForObject{}, pred)
+}
+
+func watchCAConfigMap(c controller.Controller) error {
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == caConfigmapName && e.Meta.GetNamespace() == namespace {
+				return true
+			}
+			return false
+		},
+	}
+	return c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, pred)
 }

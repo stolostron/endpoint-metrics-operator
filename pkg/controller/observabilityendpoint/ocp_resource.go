@@ -5,6 +5,7 @@ package observabilityendpoint
 import (
 	"context"
 	"os"
+	"reflect"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -47,31 +48,32 @@ func deleteMonitoringClusterRoleBinding(client client.Client) error {
 }
 
 func createMonitoringClusterRoleBinding(client client.Client) error {
-	rb := &rbacv1.ClusterRoleBinding{}
+	rb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: clusterRoleBindingName,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-monitoring-view",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      serviceAccountName,
+				Namespace: namespace,
+			},
+		},
+	}
+
+	found := &rbacv1.ClusterRoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleBindingName,
-		Namespace: ""}, rb)
+		Namespace: ""}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			rb := &rbacv1.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: clusterRoleBindingName,
-					Annotations: map[string]string{
-						ownerLabelKey: ownerLabelValue,
-					},
-				},
-				RoleRef: rbacv1.RoleRef{
-					Kind:     "ClusterRole",
-					Name:     "cluster-monitoring-view",
-					APIGroup: "rbac.authorization.k8s.io",
-				},
-				Subjects: []rbacv1.Subject{
-					{
-						Kind:      "ServiceAccount",
-						Name:      serviceAccountName,
-						Namespace: namespace,
-					},
-				},
-			}
 			err = client.Create(context.TODO(), rb)
 			if err == nil {
 				log.Info("clusterrolebinding created")
@@ -82,9 +84,18 @@ func createMonitoringClusterRoleBinding(client client.Client) error {
 		}
 		log.Error(err, "Failed to check the clusterrolebinding")
 		return err
-	} else {
-		log.Info("The clusterrolebinding already existed")
 	}
+
+	if reflect.DeepEqual(rb.RoleRef, found.RoleRef) && reflect.DeepEqual(rb.Subjects, found.Subjects) {
+		log.Info("The clusterrolebinding already existed")
+	} else {
+		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), rb)
+		if err != nil {
+			log.Error(err, "Failed to update the clusterrolebinding")
+		}
+	}
+
 	return nil
 }
 
