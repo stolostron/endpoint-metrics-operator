@@ -17,9 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
@@ -358,37 +356,6 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 	if contains(foundOba1.Finalizers, epFinalizer) {
 		t.Fatal("Finalizer not removed from observabilityAddon")
-	}
-}
-
-func TestWatch(t *testing.T) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		t.Fatalf("Failed to get config: (%v)", err)
-	}
-
-	// Set default manager options
-	options := manager.Options{
-		Namespace: "",
-	}
-
-	mgr, err := manager.New(cfg, options)
-	if err != nil {
-		t.Fatalf("Failed to create manager: (%v)", err)
-	}
-
-	hubClient := fake.NewFakeClient()
-	ocpClient := fakeconfigclient.NewSimpleClientset()
-	c := fake.NewFakeClient()
-
-	r := &ReconcileObservabilityAddon{
-		client:    c,
-		hubClient: hubClient,
-		ocpClient: ocpClient,
-	}
-	err = add(mgr, r)
-	if err != nil {
-		t.Fatalf("Failed to add controller: (%v)", err)
 	}
 }
 
