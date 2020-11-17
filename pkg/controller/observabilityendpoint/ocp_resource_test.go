@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	testClusterID = "123456789"
+	testClusterID = "kind-cluster-id"
 )
 
 var (

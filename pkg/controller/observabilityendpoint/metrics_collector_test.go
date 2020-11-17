@@ -24,6 +24,8 @@ func getWhitelistCM() *corev1.ConfigMap {
 names:
   - a
   - b
+matches:
+  - c
 `},
 	}
 }
