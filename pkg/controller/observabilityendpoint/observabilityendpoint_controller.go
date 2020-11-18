@@ -5,12 +5,12 @@ package observabilityendpoint
 import (
 	"context"
 	"os"
-	"reflect"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,11 +18,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -94,22 +92,38 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	err = watchHubInfo(c)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{},
+		getPred(hubConfigName, namespace, true, true, false))
 	if err != nil {
 		return err
 	}
 
-	err = watchCertificates(c)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{},
+		getPred(mtlsCertName, namespace, true, true, false))
 	if err != nil {
 		return err
 	}
 
-	err = watchWhitelist(c)
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{},
+		getPred(metricsConfigMapName, namespace, true, true, false))
 	if err != nil {
 		return err
 	}
 
-	err = watchMetricsCollector(c)
+	err = c.Watch(&source.Kind{Type: &v1.Deployment{}}, &handler.EnqueueRequestForObject{},
+		getPred(metricsCollectorName, namespace, true, true, true))
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{},
+		getPred(caConfigmapName, namespace, false, false, true))
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestForObject{},
+		getPred(clusterRoleBindingName, "", false, true, true))
 	if err != nil {
 		return err
 	}
@@ -341,98 +355,4 @@ func createHubClient() (client.Client, error) {
 	}
 
 	return hubClient, err
-}
-
-func watchHubInfo(c controller.Controller) error {
-	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == hubConfigName && e.Meta.GetNamespace() == namespace {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == hubConfigName && e.MetaNew.GetNamespace() == namespace &&
-				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
-}
-
-func watchCertificates(c controller.Controller) error {
-	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == mtlsCertName && e.Meta.GetNamespace() == namespace {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == mtlsCertName && e.MetaNew.GetNamespace() == namespace &&
-				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
-
-}
-
-func watchWhitelist(c controller.Controller) error {
-	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == metricsConfigMapName && e.Meta.GetNamespace() == namespace {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == metricsConfigMapName && e.MetaNew.GetNamespace() == namespace &&
-				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
-	return c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, pred)
-}
-
-func watchMetricsCollector(c controller.Controller) error {
-	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == metricsCollectorName && e.Meta.GetNamespace() == namespace {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == metricsCollectorName && e.MetaNew.GetNamespace() == namespace &&
-				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-				if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec, e.ObjectOld.(*v1.Deployment).Spec) {
-					return true
-				}
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == metricsCollectorName && e.Meta.GetNamespace() == namespace {
-				return true
-			}
-			return false
-		},
-	}
-	return c.Watch(&source.Kind{Type: &v1.Deployment{}}, &handler.EnqueueRequestForObject{}, pred)
 }
