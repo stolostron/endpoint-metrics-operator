@@ -3,7 +3,9 @@
 package observabilityendpoint
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -33,7 +35,9 @@ func getPred(name string, namespace string,
 		updateFunc = func(e event.UpdateEvent) bool {
 			if e.MetaNew.GetName() == name && e.MetaNew.GetNamespace() == namespace &&
 				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-				if e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
+				// also check objectNew string in case Kind is empty
+				if strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
+					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
 					if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec, e.ObjectOld.(*v1.Deployment).Spec) {
 						return true
 					}

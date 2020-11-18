@@ -120,10 +120,6 @@ func TestPredFunc(t *testing.T) {
 				if pred.UpdateFunc(ue) {
 					t.Fatalf("pre func return true on same deployment spec in case: (%v)", c.caseName)
 				}
-				ue.ObjectNew.(*v1.Deployment).TypeMeta.Kind = "testKind"
-				if !pred.UpdateFunc(ue) {
-					t.Fatalf("pre func return false on non Deployment kind: (%v)", c.caseName)
-				}
 			} else {
 				if pred.UpdateFunc(ue) {
 					t.Fatalf("pre func return true on non-applied updateevent in case: (%v)", c.caseName)
