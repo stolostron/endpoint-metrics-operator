@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package observabilityendpoint
 
@@ -36,7 +36,7 @@ const (
 	mcoCRName               = "observability"
 	ownerLabelKey           = "owner"
 	ownerLabelValue         = "multicluster-operator"
-	epFinalizer             = "observability.open-cluster-management.io/addon-cleanup"
+	obsAddonFinalizer       = "observability.open-cluster-management.io/addon-cleanup"
 	managedClusterAddonName = "observability-controller"
 	promSvcName             = "prometheus-k8s"
 	promNamespace           = "openshift-monitoring"
@@ -155,28 +155,32 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling")
 
-	// Fetch the ObservabilityAddon instance
-	obsAddon := &oav1beta1.ObservabilityAddon{}
-	err := r.hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, obsAddon)
+	// Fetch the ObservabilityAddon instance in hub cluster
+	hubObsAddon := &oav1beta1.ObservabilityAddon{}
+	err := r.hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 	if err != nil {
 		log.Error(err, "Failed to get observabilityaddon", "namespace", hubNamespace)
 		return reconcile.Result{}, err
 	}
 
-	hubSecret := &corev1.Secret{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: namespace}, hubSecret)
+	// Fetch the ObservabilityAddon instance in local cluster
+	obsAddon := &oav1beta1.ObservabilityAddon{}
+	err = r.hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
 	if err != nil {
-		return reconcile.Result{}, err
-	}
-	hubInfo := &HubInfo{}
-	err = yaml.Unmarshal(hubSecret.Data[hubInfoKey], &hubInfo)
-	if err != nil {
-		log.Error(err, "Failed to unmarshal hub info")
-		return reconcile.Result{}, err
+		if errors.IsNotFound(err) {
+			obsAddon = nil
+		} else {
+			log.Error(err, "Failed to get observabilityaddon", "namespace", namespace)
+			return reconcile.Result{}, err
+		}
 	}
 
 	// Init finalizers
-	deleted, err := r.initFinalization(*hubInfo, obsAddon)
+	deleteFlag := false
+	if obsAddon == nil {
+		deleteFlag = true
+	}
+	deleted, err := r.initFinalization(deleteFlag, obsAddon)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -224,12 +228,23 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
-	if hubInfo.EnableMetrics {
+	hubSecret := &corev1.Secret{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: hubConfigName, Namespace: namespace}, hubSecret)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	hubInfo := &HubInfo{}
+	err = yaml.Unmarshal(hubSecret.Data[hubInfoKey], &hubInfo)
+	if err != nil {
+		log.Error(err, "Failed to unmarshal hub info")
+		return reconcile.Result{}, err
+	}
+	if obsAddon.Spec.EnableMetrics {
 		forceRestart := false
 		if request.Name == mtlsCertName {
 			forceRestart = true
 		}
-		created, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 1, forceRestart)
+		created, err := updateMetricsCollector(r.client, obsAddon.Spec, *hubInfo, clusterID, 1, forceRestart)
 		if err != nil {
 			reportStatusToMCAddon(r.client, mcaInstance, "Degraded")
 			return reconcile.Result{}, err
@@ -239,7 +254,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			reportStatusToMCAddon(r.hubClient, mcaInstance, "Ready")
 		}
 	} else {
-		deleted, err := updateMetricsCollector(r.client, *hubInfo, clusterID, 0, false)
+		deleted, err := updateMetricsCollector(r.client, obsAddon.Spec, *hubInfo, clusterID, 0, false)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -254,8 +269,8 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 }
 
 func (r *ReconcileObservabilityAddon) initFinalization(
-	hubInfo HubInfo, ep *oav1beta1.ObservabilityAddon) (bool, error) {
-	if hubInfo.DeleteFlag && contains(ep.GetFinalizers(), epFinalizer) {
+	delete bool, obsAddon *oav1beta1.ObservabilityAddon) (bool, error) {
+	if delete && contains(obsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(r.client)
 		if err != nil {
@@ -272,20 +287,20 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 		if err != nil {
 			return false, err
 		}
-		ep.SetFinalizers(remove(ep.GetFinalizers(), epFinalizer))
-		err = r.hubClient.Update(context.TODO(), ep)
+		obsAddon.SetFinalizers(remove(obsAddon.GetFinalizers(), obsAddonFinalizer))
+		err = r.hubClient.Update(context.TODO(), obsAddon)
 		if err != nil {
-			log.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", ep.Namespace)
+			log.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", obsAddon.Namespace)
 			return false, err
 		}
 		log.Info("Finalizer removed from observabilityaddon resource")
 		return true, nil
 	}
-	if !contains(ep.GetFinalizers(), epFinalizer) {
-		ep.SetFinalizers(append(ep.GetFinalizers(), epFinalizer))
-		err := r.hubClient.Update(context.TODO(), ep)
+	if !contains(obsAddon.GetFinalizers(), obsAddonFinalizer) {
+		obsAddon.SetFinalizers(append(obsAddon.GetFinalizers(), obsAddonFinalizer))
+		err := r.hubClient.Update(context.TODO(), obsAddon)
 		if err != nil {
-			log.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", ep.Namespace)
+			log.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", obsAddon.Namespace)
 			return false, err
 		}
 		log.Info("Finalizer added to observabilityaddon resource")

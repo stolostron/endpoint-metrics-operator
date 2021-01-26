@@ -231,7 +231,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
-	if !contains(foundOba.Finalizers, epFinalizer) {
+	if !contains(foundOba.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not set in observabilityAddon")
 	}
 
@@ -354,7 +354,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
-	if contains(foundOba1.Finalizers, epFinalizer) {
+	if contains(foundOba1.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not removed from observabilityAddon")
 	}
 }
