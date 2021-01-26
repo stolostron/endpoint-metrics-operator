@@ -29,7 +29,7 @@ const (
 	caVolName            = "serving-certs-ca-bundle"
 	mtlsCertName         = "observability-managed-cluster-certs"
 	limitBytes           = 1073741824
-	defaultInterval      = "60s"
+	defaultInterval      = "30s"
 )
 
 const (
