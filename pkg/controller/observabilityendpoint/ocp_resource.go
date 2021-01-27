@@ -26,7 +26,7 @@ func deleteMonitoringClusterRoleBinding(client kubernetes.Interface) error {
 	rb, err := client.RbacV1().ClusterRoleBindings().Get(clusterRoleBindingName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info(err.Error(), ": clusterrolebinding already deleted")
+			log.Info(err.Error(), "Reason", ": clusterrolebinding already deleted")
 			return nil
 		}
 		log.Error(err, ": Failed to check the clusterrolebinding")
@@ -87,7 +87,7 @@ func deleteCAConfigmap(client kubernetes.Interface) error {
 	cm, err := client.CoreV1().ConfigMaps(namespace).Get(caConfigmapName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info(err.Error(), ": configmap already deleted")
+			log.Info(err.Error(), "Reason", ": configmap already deleted")
 			return nil
 		}
 		log.Error(err, ": Failed to check the configmap")
