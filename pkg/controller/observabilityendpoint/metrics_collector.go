@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package observabilityendpoint
 
@@ -29,7 +29,7 @@ const (
 	caVolName            = "serving-certs-ca-bundle"
 	mtlsCertName         = "observability-managed-cluster-certs"
 	limitBytes           = 1073741824
-	defaultInterval      = "60s"
+	defaultInterval      = "30s"
 )
 
 const (
