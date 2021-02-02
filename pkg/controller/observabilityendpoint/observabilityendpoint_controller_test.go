@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package observabilityendpoint
 
@@ -55,11 +55,15 @@ func newPromSvc() *corev1.Service {
 	}
 }
 
-func newObservabilityAddon() *oav1beta1.ObservabilityAddon {
+func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
-			Namespace: testHubNamspace,
+			Namespace: ns,
+		},
+		Spec: oav1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			Interval:      60,
 		},
 	}
 }
@@ -77,31 +81,11 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	}
 }
 
-func newHubInfoSecret(deleteFlag bool, enableMetrics bool) *corev1.Secret {
+func newHubInfoSecret() *corev1.Secret {
 	data := []byte(`
 cluster-name: "test-cluster"
 endpoint: "http://test-endpoint"
-enable-metrics: true
-internal: 60
-delete-flag: false
 `)
-	if deleteFlag {
-		data = []byte(`
-cluster-name: "test-cluster"
-endpoint: "http://test-endpoint"
-enable-metrics: true
-internal: 60
-delete-flag: true
-`)
-	} else if !enableMetrics {
-		data = []byte(`
-cluster-name: "test-cluster"
-endpoint: "http://test-endpoint"
-enable-metrics: false
-internal: 60
-delete-flag: false
-`)
-	}
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1.SchemeGroupVersion.String(),
@@ -130,10 +114,9 @@ func init() {
 
 func TestObservabilityAddonController(t *testing.T) {
 
-	oba := newObservabilityAddon()
 	mcaddon := newManagedClusterAddon()
 	hubObjs := []runtime.Object{}
-	hubInfo := newHubInfoSecret(false, true)
+	hubInfo := newHubInfoSecret()
 	whiteList := getWhitelistCM()
 	objs := []runtime.Object{hubInfo, whiteList}
 
@@ -160,7 +143,12 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	// test error in reconcile if missing managedclusteraddon
-	err = hubClient.Create(context.TODO(), oba)
+	err = hubClient.Create(context.TODO(), newObservabilityAddon(name, testHubNamspace))
+	if err != nil {
+		t.Fatalf("failed to create hub oba to install: (%v)", err)
+	}
+	oba := newObservabilityAddon(name, testNamespace)
+	err = c.Create(context.TODO(), oba)
 	if err != nil {
 		t.Fatalf("failed to create oba to install: (%v)", err)
 	}
@@ -282,14 +270,15 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	// test reconcile  metrics collector's replicas set to 0 if observability disabled
-	err = c.Delete(context.TODO(), hubInfo)
+	err = c.Delete(context.TODO(), oba)
 	if err != nil {
-		t.Fatalf("failed to delete hubinfo secret to disable: (%v)", err)
+		t.Fatalf("failed to delete obsaddon to disable: (%v)", err)
 	}
-	hubInfo = newHubInfoSecret(false, false)
-	err = c.Create(context.TODO(), hubInfo)
+	oba = newObservabilityAddon(name, testNamespace)
+	oba.Spec.EnableMetrics = false
+	err = c.Create(context.TODO(), oba)
 	if err != nil {
-		t.Fatalf("failed to create hubinfo secret to disable: (%v)", err)
+		t.Fatalf("failed to create obsaddon to disable: (%v)", err)
 	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -311,17 +300,9 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	// test reconcile all resources and finalizer are removed
-	err = c.Delete(context.TODO(), hubInfo)
+	err = c.Delete(context.TODO(), oba)
 	if err != nil {
-		t.Fatalf("failed to delete hubinfo secret to disable: (%v)", err)
-	}
-	hubInfo = newHubInfoSecret(true, true)
-	err = c.Create(context.TODO(), hubInfo)
-	if err != nil {
-		t.Fatalf("failed to create hubinfo secret to disable: (%v)", err)
-	}
-	if err != nil {
-		t.Fatalf("failed to update hubinfo secret to delete: (%v)", err)
+		t.Fatalf("failed to delete obsaddon to delete: (%v)", err)
 	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{

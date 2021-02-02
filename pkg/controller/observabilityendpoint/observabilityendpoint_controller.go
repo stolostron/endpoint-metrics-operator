@@ -165,7 +165,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 
 	// Fetch the ObservabilityAddon instance in local cluster
 	obsAddon := &oav1beta1.ObservabilityAddon{}
-	err = r.hubClient.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			obsAddon = nil
@@ -174,13 +174,14 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 	}
-
+	log.Info("obsaddon", "hubObsAddon", hubObsAddon)
+	log.Info("obsaddon", "oba", obsAddon)
 	// Init finalizers
 	deleteFlag := false
 	if obsAddon == nil {
 		deleteFlag = true
 	}
-	deleted, err := r.initFinalization(deleteFlag, obsAddon)
+	deleted, err := r.initFinalization(deleteFlag, hubObsAddon)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -205,7 +206,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	if err != nil {
 		if errors.IsNotFound(err) {
 			reqLogger.Error(err, "OCP prometheus service does not exist")
-			reportStatus(r.hubClient, obsAddon, "NotSupported")
+			reportStatus(r.hubClient, hubObsAddon, "NotSupported")
 			reportStatusToMCAddon(r.hubClient, mcaInstance, "NotSupported")
 			return reconcile.Result{}, nil
 		}
@@ -250,7 +251,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 		if created {
-			reportStatus(r.hubClient, obsAddon, "Ready")
+			reportStatus(r.hubClient, hubObsAddon, "Ready")
 			reportStatusToMCAddon(r.hubClient, mcaInstance, "Ready")
 		}
 	} else {
@@ -259,7 +260,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 		if deleted {
-			reportStatus(r.hubClient, obsAddon, "Disabled")
+			reportStatus(r.hubClient, hubObsAddon, "Disabled")
 			reportStatusToMCAddon(r.hubClient, mcaInstance, "Disabled")
 		}
 	}
@@ -269,8 +270,8 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 }
 
 func (r *ReconcileObservabilityAddon) initFinalization(
-	delete bool, obsAddon *oav1beta1.ObservabilityAddon) (bool, error) {
-	if delete && contains(obsAddon.GetFinalizers(), obsAddonFinalizer) {
+	delete bool, hubObsAddon *oav1beta1.ObservabilityAddon) (bool, error) {
+	if delete && contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(r.client)
 		if err != nil {
@@ -287,20 +288,20 @@ func (r *ReconcileObservabilityAddon) initFinalization(
 		if err != nil {
 			return false, err
 		}
-		obsAddon.SetFinalizers(remove(obsAddon.GetFinalizers(), obsAddonFinalizer))
-		err = r.hubClient.Update(context.TODO(), obsAddon)
+		hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
+		err = r.hubClient.Update(context.TODO(), hubObsAddon)
 		if err != nil {
-			log.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", obsAddon.Namespace)
+			log.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err
 		}
 		log.Info("Finalizer removed from observabilityaddon resource")
 		return true, nil
 	}
-	if !contains(obsAddon.GetFinalizers(), obsAddonFinalizer) {
-		obsAddon.SetFinalizers(append(obsAddon.GetFinalizers(), obsAddonFinalizer))
-		err := r.hubClient.Update(context.TODO(), obsAddon)
+	if !contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+		hubObsAddon.SetFinalizers(append(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
+		err := r.hubClient.Update(context.TODO(), hubObsAddon)
 		if err != nil {
-			log.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", obsAddon.Namespace)
+			log.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err
 		}
 		log.Info("Finalizer added to observabilityaddon resource")

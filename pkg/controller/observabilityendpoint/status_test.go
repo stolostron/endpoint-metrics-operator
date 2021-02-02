@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 package observabilityendpoint
 
 import (
@@ -14,7 +14,7 @@ import (
 )
 
 func TestReportStatus(t *testing.T) {
-	oa := newObservabilityAddon()
+	oa := newObservabilityAddon(name, testNamespace)
 	objs := []runtime.Object{oa}
 	s := scheme.Scheme
 	if err := apis.AddToScheme(s); err != nil {
