@@ -20,7 +20,7 @@ import (
 
 const (
 	hubInfoKey           = "hub-info.yaml"
-	metricsConfigMapName = "observability-metrics-whitelist"
+	metricsConfigMapName = "observability-metrics-allowlist"
 	metricsConfigMapKey  = "metrics_list.yaml"
 	metricsCollectorName = "metrics-collector-deployment"
 	selectorKey          = "component"
