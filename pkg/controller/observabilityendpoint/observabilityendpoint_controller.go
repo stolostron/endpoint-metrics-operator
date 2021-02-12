@@ -92,6 +92,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	err = c.Watch(&source.Kind{Type: &oav1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{},
+		getPred(obAddonName, namespace, true, true, true))
+	if err != nil {
+		return err
+	}
+
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{},
 		getPred(hubConfigName, namespace, true, true, false))
 	if err != nil {
@@ -174,8 +180,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 	}
-	log.Info("obsaddon", "hubObsAddon", hubObsAddon)
-	log.Info("obsaddon", "oba", obsAddon)
+
 	// Init finalizers
 	deleteFlag := false
 	if obsAddon == nil {
@@ -185,7 +190,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if deleted {
+	if deleted || deleteFlag {
 		return reconcile.Result{}, nil
 	}
 
