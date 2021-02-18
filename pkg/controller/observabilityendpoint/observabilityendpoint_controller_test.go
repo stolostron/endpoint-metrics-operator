@@ -34,6 +34,19 @@ const (
 	podName         = "metrics-collector-deployment-abc-xyz"
 )
 
+func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
+	return &oav1beta1.ObservabilityAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: oav1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			Interval:      60,
+		},
+	}
+}
+
 func newPod() *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
@@ -51,32 +64,6 @@ func newPromSvc() *corev1.Service {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      promSvcName,
 			Namespace: promNamespace,
-		},
-	}
-}
-
-func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
-	return &oav1beta1.ObservabilityAddon{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-		Spec: oav1beta1.ObservabilityAddonSpec{
-			EnableMetrics: true,
-			Interval:      60,
-		},
-	}
-}
-
-func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
-	return &addonv1alpha1.ManagedClusterAddOn{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
-			Kind:       "ManagedClusterAddOn",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      managedClusterAddonName,
-			Namespace: testHubNamspace,
 		},
 	}
 }
@@ -114,7 +101,6 @@ func init() {
 
 func TestObservabilityAddonController(t *testing.T) {
 
-	mcaddon := newManagedClusterAddon()
 	hubObjs := []runtime.Object{}
 	hubInfo := newHubInfoSecret()
 	whiteList := getWhitelistCM()
@@ -142,7 +128,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: miss the error for missing obervabilityaddon")
 	}
 
-	// test error in reconcile if missing managedclusteraddon
+	// test reconcile w/o prometheus-k8s svc
 	err = hubClient.Create(context.TODO(), newObservabilityAddon(name, testHubNamspace))
 	if err != nil {
 		t.Fatalf("failed to create hub oba to install: (%v)", err)
@@ -151,22 +137,6 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Create(context.TODO(), oba)
 	if err != nil {
 		t.Fatalf("failed to create oba to install: (%v)", err)
-	}
-	req = reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "install",
-			Namespace: testNamespace,
-		},
-	}
-	_, err = r.Reconcile(req)
-	if err == nil {
-		t.Fatalf("reconcile: miss the error for missing managedclusteraddon")
-	}
-
-	// test reconcile w/o prometheus-k8s svc
-	err = hubClient.Create(context.TODO(), mcaddon)
-	if err != nil {
-		t.Fatalf("failed to create mcaddon to install: (%v)", err)
 	}
 	req = reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -344,12 +314,5 @@ func TestCreateOCPClient(t *testing.T) {
 	_, err := createOCPClient()
 	if err == nil {
 		t.Fatalf("Failed to catch error when creating ocpclient: (%v)", err)
-	}
-}
-
-func TestCreateHubClient(t *testing.T) {
-	_, err := createHubClient()
-	if err == nil {
-		t.Fatalf("Failed to catch error when creating hubclient: (%v)", err)
 	}
 }

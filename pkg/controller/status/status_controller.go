@@ -9,8 +9,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -21,8 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
@@ -58,7 +55,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	// Create kube client
-	kubeClient, err := createHubClient()
+	kubeClient, err := util.CreateHubClient()
 	if err != nil {
 		log.Error(err, "Failed to create the Kubernetes client")
 		return nil
@@ -152,31 +149,4 @@ func (r *ReconcileStatus) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func createHubClient() (client.Client, error) {
-	// create the config from the path
-	config, err := clientcmd.BuildConfigFromFlags("", hubKubeConfigPath)
-	if err != nil {
-		log.Error(err, "Failed to create the config")
-		return nil, err
-	}
-
-	s := scheme.Scheme
-	if err := apis.AddToScheme(s); err != nil {
-		return nil, err
-	}
-
-	if err := addonv1alpha1.AddToScheme(s); err != nil {
-		return nil, err
-	}
-
-	// generate the client based off of the config
-	hubClient, err := client.New(config, client.Options{Scheme: s})
-	if err != nil {
-		log.Error(err, "Failed to create hub client")
-		return nil, err
-	}
-
-	return hubClient, err
 }

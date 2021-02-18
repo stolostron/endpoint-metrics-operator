@@ -1,5 +1,5 @@
 // Copyright (c) 2021 Red Hat, Inc.
-package observabilityendpoint
+package util
 
 import (
 	"fmt"
@@ -12,6 +12,20 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+const (
+	name          = "observability-addon"
+	testNamespace = "test-ns"
+)
+
+func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
+	return &oav1beta1.ObservabilityAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+	}
+}
 
 func TestReportStatus(t *testing.T) {
 	oa := newObservabilityAddon(name, testNamespace)
@@ -46,7 +60,7 @@ func TestReportStatus(t *testing.T) {
 	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
 	c := fake.NewFakeClient(objs...)
 	for i := range statusList {
-		reportStatus(c, oa, statusList[i])
+		ReportStatus(c, oa, statusList[i])
 		if oa.Status.Conditions[0].Message != expectedStatus[i].Message || oa.Status.Conditions[0].Reason != expectedStatus[i].Reason || oa.Status.Conditions[0].Status != expectedStatus[i].Status || oa.Status.Conditions[0].Type != expectedStatus[i].Type {
 			t.Errorf("Error: Status not updated. Expected: %s, Actual: %s", expectedStatus[i], fmt.Sprintf("%+v\n", oa.Status.Conditions[0]))
 		}

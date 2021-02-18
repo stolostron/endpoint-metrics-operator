@@ -114,10 +114,3 @@ func TestStatusController(t *testing.T) {
 		t.Fatalf("Wrong status type: (%v)", hubObsAddon.Status)
 	}
 }
-
-func TestCreateHubClient(t *testing.T) {
-	_, err := createHubClient()
-	if err == nil {
-		t.Fatalf("Failed to catch error when creating hubclient: (%v)", err)
-	}
-}

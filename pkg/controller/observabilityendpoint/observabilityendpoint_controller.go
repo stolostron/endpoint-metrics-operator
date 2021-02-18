@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -24,22 +23,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
-	hubKubeConfigPath       = "/spoke/hub-kubeconfig/kubeconfig"
-	hubConfigName           = "hub-info-secret"
-	obAddonName             = "observability-addon"
-	mcoCRName               = "observability"
-	ownerLabelKey           = "owner"
-	ownerLabelValue         = "multicluster-operator"
-	obsAddonFinalizer       = "observability.open-cluster-management.io/addon-cleanup"
-	managedClusterAddonName = "observability-controller"
-	promSvcName             = "prometheus-k8s"
-	promNamespace           = "openshift-monitoring"
+	hubConfigName     = "hub-info-secret"
+	obAddonName       = "observability-addon"
+	mcoCRName         = "observability"
+	ownerLabelKey     = "owner"
+	ownerLabelValue   = "multicluster-operator"
+	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
+	promSvcName       = "prometheus-k8s"
+	promNamespace     = "openshift-monitoring"
 )
 
 var (
@@ -63,7 +59,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	// Create kube client
-	kubeClient, err := createHubClient()
+	kubeClient, err := util.CreateHubClient()
 	if err != nil {
 		log.Error(err, "Failed to create the Kubernetes client")
 		return nil
@@ -194,16 +190,6 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, nil
 	}
 
-	// Fetch the ManagedClusterAddon instance
-	mcaInstance := &addonv1alpha1.ManagedClusterAddOn{}
-	err = r.hubClient.Get(context.TODO(), types.NamespacedName{Name: managedClusterAddonName,
-		Namespace: hubNamespace}, mcaInstance)
-	if err != nil {
-		log.Error(err, "Failed to get managedclusteraddon", "namespace", hubNamespace)
-		return reconcile.Result{}, err
-
-	}
-
 	// If no prometheus service found, set status as NotSupported
 	promSvc := &corev1.Service{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: promSvcName,
@@ -211,7 +197,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	if err != nil {
 		if errors.IsNotFound(err) {
 			reqLogger.Error(err, "OCP prometheus service does not exist")
-			reportStatus(r.client, obsAddon, "NotSupported")
+			util.ReportStatus(r.client, obsAddon, "NotSupported")
 			return reconcile.Result{}, nil
 		}
 		reqLogger.Error(err, "Failed to check prometheus resource")
@@ -251,11 +237,11 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		}
 		created, err := updateMetricsCollector(r.client, obsAddon.Spec, *hubInfo, clusterID, 1, forceRestart)
 		if err != nil {
-			reportStatus(r.client, obsAddon, "Degraded")
+			util.ReportStatus(r.client, obsAddon, "Degraded")
 			return reconcile.Result{}, err
 		}
 		if created {
-			reportStatus(r.client, obsAddon, "Ready")
+			util.ReportStatus(r.client, obsAddon, "Ready")
 		}
 	} else {
 		deleted, err := updateMetricsCollector(r.client, obsAddon.Spec, *hubInfo, clusterID, 0, false)
@@ -263,7 +249,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 		if deleted {
-			reportStatus(r.client, obsAddon, "Disabled")
+			util.ReportStatus(r.client, obsAddon, "Disabled")
 		}
 	}
 
@@ -346,31 +332,4 @@ func createOCPClient() (ocpClientSet.Interface, error) {
 	}
 
 	return ocpClient, err
-}
-
-func createHubClient() (client.Client, error) {
-	// create the config from the path
-	config, err := clientcmd.BuildConfigFromFlags("", hubKubeConfigPath)
-	if err != nil {
-		log.Error(err, "Failed to create the config")
-		return nil, err
-	}
-
-	s := scheme.Scheme
-	if err := apis.AddToScheme(s); err != nil {
-		return nil, err
-	}
-
-	if err := addonv1alpha1.AddToScheme(s); err != nil {
-		return nil, err
-	}
-
-	// generate the client based off of the config
-	hubClient, err := client.New(config, client.Options{Scheme: s})
-	if err != nil {
-		log.Error(err, "Failed to create hub client")
-		return nil, err
-	}
-
-	return hubClient, err
 }
