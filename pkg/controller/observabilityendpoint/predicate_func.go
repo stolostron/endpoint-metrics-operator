@@ -10,6 +10,8 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 func getPred(name string, namespace string,
@@ -39,6 +41,12 @@ func getPred(name string, namespace string,
 				if strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
 					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
 					if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec, e.ObjectOld.(*v1.Deployment).Spec) {
+						return true
+					}
+				} else if e.MetaNew.GetName() == obAddonName ||
+					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+					if !reflect.DeepEqual(e.ObjectNew.(*oav1beta1.ObservabilityAddon).Spec,
+						e.ObjectOld.(*oav1beta1.ObservabilityAddon).Spec) {
 						return true
 					}
 				} else {

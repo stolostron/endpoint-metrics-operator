@@ -211,8 +211,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 	if err != nil {
 		if errors.IsNotFound(err) {
 			reqLogger.Error(err, "OCP prometheus service does not exist")
-			reportStatus(r.hubClient, hubObsAddon, "NotSupported")
-			reportStatusToMCAddon(r.hubClient, mcaInstance, "NotSupported")
+			reportStatus(r.client, obsAddon, "NotSupported")
 			return reconcile.Result{}, nil
 		}
 		reqLogger.Error(err, "Failed to check prometheus resource")
@@ -252,12 +251,11 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 		}
 		created, err := updateMetricsCollector(r.client, obsAddon.Spec, *hubInfo, clusterID, 1, forceRestart)
 		if err != nil {
-			reportStatusToMCAddon(r.client, mcaInstance, "Degraded")
+			reportStatus(r.client, obsAddon, "Degraded")
 			return reconcile.Result{}, err
 		}
 		if created {
-			reportStatus(r.hubClient, hubObsAddon, "Ready")
-			reportStatusToMCAddon(r.hubClient, mcaInstance, "Ready")
+			reportStatus(r.client, obsAddon, "Ready")
 		}
 	} else {
 		deleted, err := updateMetricsCollector(r.client, obsAddon.Spec, *hubInfo, clusterID, 0, false)
@@ -265,8 +263,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 		if deleted {
-			reportStatus(r.hubClient, hubObsAddon, "Disabled")
-			reportStatusToMCAddon(r.hubClient, mcaInstance, "Disabled")
+			reportStatus(r.client, obsAddon, "Disabled")
 		}
 	}
 
