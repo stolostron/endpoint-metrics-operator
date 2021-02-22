@@ -32,7 +32,7 @@ const (
 	obAddonName       = "observability-addon"
 	mcoCRName         = "observability"
 	ownerLabelKey     = "owner"
-	ownerLabelValue   = "multicluster-operator"
+	ownerLabelValue   = "observabilityaddon"
 	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
 	promSvcName       = "prometheus-k8s"
 	promNamespace     = "openshift-monitoring"
