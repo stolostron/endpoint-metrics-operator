@@ -16,6 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
@@ -50,17 +52,14 @@ type MetricsWhitelist struct {
 
 // HubInfo is the struct for hub info
 type HubInfo struct {
-	ClusterName   string `yaml:"cluster-name"`
-	Endpoint      string `yaml:"endpoint"`
-	EnableMetrics bool   `yaml:"enable-metrics"`
-	Interval      int32  `yaml:"internal"`
-	DeleteFlag    bool   `yaml:"delete-flag"`
+	ClusterName string `yaml:"cluster-name"`
+	Endpoint    string `yaml:"endpoint"`
 }
 
-func createDeployment(clusterID string, hubInfo HubInfo,
-	whitelist MetricsWhitelist, replicaCount int32) *v1.Deployment {
-	interval := fmt.Sprint(hubInfo.Interval) + "s"
-	if fmt.Sprint(hubInfo.Interval) == "" {
+func createDeployment(clusterID string, obsAddonSpec oav1beta1.ObservabilityAddonSpec,
+	hubInfo HubInfo, whitelist MetricsWhitelist, replicaCount int32) *v1.Deployment {
+	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
+	if fmt.Sprint(obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
 	}
 
@@ -84,7 +83,7 @@ func createDeployment(clusterID string, hubInfo HubInfo,
 	if clusterID == "" {
 		clusterID = hubInfo.ClusterName
 		// deprecated ca bundle, only used for ocp 3.11 env
-		caFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+		caFile = "//run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
 	} else {
 		volumes = append(volumes, corev1.Volume{
 			Name: caVolName,
@@ -173,7 +172,8 @@ func createDeployment(clusterID string, hubInfo HubInfo,
 									Value: clusterID,
 								},
 							},
-							VolumeMounts: mounts,
+							VolumeMounts:    mounts,
+							ImagePullPolicy: corev1.PullAlways,
 						},
 					},
 					Volumes: volumes,
@@ -183,11 +183,12 @@ func createDeployment(clusterID string, hubInfo HubInfo,
 	}
 }
 
-func updateMetricsCollector(c client.Client, hubInfo HubInfo,
-	clusterID string, replicaCount int32, forceRestart bool) (bool, error) {
+func updateMetricsCollector(c client.Client, obsAddonSpec oav1beta1.ObservabilityAddonSpec,
+	hubInfo HubInfo, clusterID string,
+	replicaCount int32, forceRestart bool) (bool, error) {
 
 	list := getMetricsWhitelist(c)
-	deployment := createDeployment(clusterID, hubInfo, list, replicaCount)
+	deployment := createDeployment(clusterID, obsAddonSpec, hubInfo, list, replicaCount)
 	found := &v1.Deployment{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)

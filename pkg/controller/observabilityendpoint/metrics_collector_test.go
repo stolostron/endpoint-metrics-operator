@@ -1,16 +1,18 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 package observabilityendpoint
 
 import (
 	"testing"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
+	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 func getWhitelistCM() *corev1.ConfigMap {
@@ -43,32 +45,33 @@ func init() {
 
 func TestMetricsCollector(t *testing.T) {
 	hubInfo := &HubInfo{
-		ClusterName:   "test-cluster",
-		Endpoint:      "http://test-endpoint",
-		EnableMetrics: true,
-		Interval:      60,
-		DeleteFlag:    false,
+		ClusterName: "test-cluster",
+		Endpoint:    "http://test-endpoint",
 	}
 	whitelistCM := getWhitelistCM()
+	obsAddon := oav1beta1.ObservabilityAddonSpec{
+		EnableMetrics: true,
+		Interval:      60,
+	}
 
 	c := fake.NewFakeClient(whitelistCM)
 	// Default deployment with instance count 1
-	_, err := updateMetricsCollector(c, *hubInfo, testClusterID, 1, false)
+	_, err := updateMetricsCollector(c, obsAddon, *hubInfo, testClusterID, 1, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 	// Update deployment to reduce instance count to zero
-	_, err = updateMetricsCollector(c, *hubInfo, testClusterID, 0, false)
+	_, err = updateMetricsCollector(c, obsAddon, *hubInfo, testClusterID, 0, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = updateMetricsCollector(c, *hubInfo, testClusterID+"-update", 1, false)
+	_, err = updateMetricsCollector(c, obsAddon, *hubInfo, testClusterID+"-update", 1, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = updateMetricsCollector(c, *hubInfo, testClusterID+"-update", 1, true)
+	_, err = updateMetricsCollector(c, obsAddon, *hubInfo, testClusterID+"-update", 1, true)
 	if err != nil {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}
