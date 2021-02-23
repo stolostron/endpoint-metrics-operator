@@ -24,14 +24,7 @@ import (
 )
 
 const (
-	hubKubeConfigPath       = "/spoke/hub-kubeconfig/kubeconfig"
-	hubConfigName           = "hub-info-secret"
-	obAddonName             = "observability-addon"
-	mcoCRName               = "observability"
-	ownerLabelKey           = "owner"
-	ownerLabelValue         = "multicluster-operator"
-	obsAddonFinalizer       = "observability.open-cluster-management.io/addon-cleanup"
-	managedClusterAddonName = "observability-controller"
+	obAddonName = "observability-addon"
 )
 
 var (
