@@ -16,7 +16,7 @@ import (
 	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
-func getWhitelistCM() *corev1.ConfigMap {
+func getAllowlistCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      metricsConfigMapName,
@@ -49,13 +49,13 @@ func TestMetricsCollector(t *testing.T) {
 		ClusterName: "test-cluster",
 		Endpoint:    "http://test-endpoint",
 	}
-	whitelistCM := getWhitelistCM()
+	allowlistCM := getAllowlistCM()
 	obsAddon := oav1beta1.ObservabilityAddonSpec{
 		EnableMetrics: true,
 		Interval:      60,
 	}
 
-	c := fake.NewFakeClient(whitelistCM)
+	c := fake.NewFakeClient(allowlistCM)
 	// Default deployment with instance count 1
 	_, err := updateMetricsCollector(c, obsAddon, *hubInfo, testClusterID, 1, false)
 	if err != nil {
