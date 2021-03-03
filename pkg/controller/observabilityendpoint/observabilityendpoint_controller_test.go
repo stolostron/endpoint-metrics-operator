@@ -103,8 +103,8 @@ func TestObservabilityAddonController(t *testing.T) {
 
 	hubObjs := []runtime.Object{}
 	hubInfo := newHubInfoSecret()
-	whiteList := getWhitelistCM()
-	objs := []runtime.Object{hubInfo, whiteList}
+	allowList := getAllowlistCM()
+	objs := []runtime.Object{hubInfo, allowList}
 
 	hubClient := fake.NewFakeClient(hubObjs...)
 	ocpClient := fakeconfigclient.NewSimpleClientset(cv)

@@ -45,7 +45,7 @@ var (
 	ocpPromURL     = "https://prometheus-k8s.openshift-monitoring.svc:9091"
 )
 
-type MetricsWhitelist struct {
+type MetricsAllowlist struct {
 	NameList  []string `yaml:"names"`
 	MatchList []string `yaml:"matches"`
 }
@@ -57,7 +57,7 @@ type HubInfo struct {
 }
 
 func createDeployment(clusterID string, obsAddonSpec oav1beta1.ObservabilityAddonSpec,
-	hubInfo HubInfo, whitelist MetricsWhitelist, replicaCount int32) *v1.Deployment {
+	hubInfo HubInfo, allowlist MetricsAllowlist, replicaCount int32) *v1.Deployment {
 	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
 	if fmt.Sprint(obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
@@ -123,10 +123,10 @@ func createDeployment(clusterID string, obsAddonSpec oav1beta1.ObservabilityAddo
 		"--label=\"clusterID=" + clusterID + "\"",
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 	}
-	for _, metrics := range whitelist.NameList {
+	for _, metrics := range allowlist.NameList {
 		commands = append(commands, "--match={__name__=\""+metrics+"\"}")
 	}
-	for _, match := range whitelist.MatchList {
+	for _, match := range allowlist.MatchList {
 		commands = append(commands, "--match={"+match+"}")
 	}
 	return &v1.Deployment{
@@ -187,7 +187,7 @@ func updateMetricsCollector(c client.Client, obsAddonSpec oav1beta1.Observabilit
 	hubInfo HubInfo, clusterID string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
-	list := getMetricsWhitelist(c)
+	list := getMetricsAllowlist(c)
 	deployment := createDeployment(clusterID, obsAddonSpec, hubInfo, list, replicaCount)
 	found := &v1.Deployment{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: metricsCollectorName,
@@ -247,8 +247,8 @@ func deleteMetricsCollector(client client.Client) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsWhitelist(client client.Client) MetricsWhitelist {
-	l := &MetricsWhitelist{}
+func getMetricsAllowlist(client client.Client) MetricsAllowlist {
+	l := &MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: metricsConfigMapName,
 		Namespace: namespace}, cm)

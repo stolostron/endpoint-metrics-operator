@@ -22,9 +22,9 @@ name | description | required | default | schema
 ---- | ----------- | -------- | ------- | ------
 metricsSource | The server configuration to get metrics from | no | n/a | MetricsSource
 interval | Interval to collect&push metrics | yes | 1m | string
-whitelistConfigMaps | List  of configmap name. For each configmap it contains the whitelist for metrics pushed to hub. It only includes the metrics customized by users. The default metrics will also be pushed even if this value is empty. | no | n/a | []string
-scrapeTargets | Additional scrape targets added to local prometheus to scrape additional metrics. The metrics scraped from the new added scrape targets will be included in the whitelist of metrics.(filter the metrics using {job=”SERVICE_MONITOR_NAME”}) | no | n/a | [][ServiceMonitorSpec](https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#servicemonitorspec)
-rules | List for alert rules and recording rules. The metrics defined in the new-added recording rules will be included in the whitelist of metrics. | no | n/a | [][Rule](https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#rule 
+allowlistConfigMaps | List  of configmap name. For each configmap it contains the allowlist for metrics pushed to hub. It only includes the metrics customized by users. The default metrics will also be pushed even if this value is empty. | no | n/a | []string
+scrapeTargets | Additional scrape targets added to local prometheus to scrape additional metrics. The metrics scraped from the new added scrape targets will be included in the allowlist of metrics.(filter the metrics using {job=”SERVICE_MONITOR_NAME”}) | no | n/a | [][ServiceMonitorSpec](https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#servicemonitorspec)
+rules | List for alert rules and recording rules. The metrics defined in the new-added recording rules will be included in the allowlist of metrics. | no | n/a | [][Rule](https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#rule 
 
 **MetricsSource Spec**: describe the information to get the metrics
 
@@ -69,8 +69,8 @@ spec:
       tlsConfig:
         ca: local-ca-secret
         cert: local-cert-secret
-    whitelistConfigMaps:
-    - sample-whitelist
+    allowlistConfigMaps:
+    - sample-allowlist
     scrapeTargets:
     - endpoints:
       - interval: 30s
