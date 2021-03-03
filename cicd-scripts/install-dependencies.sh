@@ -1,6 +1,6 @@
 #!/bin/bash
-# Copyright (c) 2020 Red Hat, Inc.
-
+# Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project.
 echo "install dependencies"
 
 _OPERATOR_SDK_VERSION=v0.17.0
