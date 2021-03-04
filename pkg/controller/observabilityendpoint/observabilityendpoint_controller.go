@@ -241,7 +241,7 @@ func (r *ReconcileObservabilityAddon) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, err
 		}
 		if created {
-			util.ReportStatus(r.client, obsAddon, "Ready")
+			util.ReportStatus(r.client, obsAddon, "Deployed")
 		}
 	} else {
 		deleted, err := updateMetricsCollector(r.client, obsAddon.Spec, *hubInfo, clusterID, 0, false)

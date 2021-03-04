@@ -81,10 +81,10 @@ func TestStatusController(t *testing.T) {
 	oba.Status = oav1beta1.ObservabilityAddonStatus{
 		Conditions: []oav1beta1.StatusCondition{
 			{
-				Type:    "Ready",
+				Type:    "Deployed",
 				Status:  metav1.ConditionTrue,
 				Reason:  "Deployed",
-				Message: "Metrics collector deployed and functional",
+				Message: "Metrics collector deployed",
 			},
 		},
 	}
@@ -110,7 +110,7 @@ func TestStatusController(t *testing.T) {
 
 	if hubObsAddon.Status.Conditions == nil || len(hubObsAddon.Status.Conditions) != 1 {
 		t.Fatalf("No correct status set in hub observabilityaddon: (%v)", hubObsAddon)
-	} else if hubObsAddon.Status.Conditions[0].Type != "Ready" {
+	} else if hubObsAddon.Status.Conditions[0].Type != "Deployed" {
 		t.Fatalf("Wrong status type: (%v)", hubObsAddon.Status)
 	}
 }

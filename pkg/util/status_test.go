@@ -44,10 +44,10 @@ func TestReportStatus(t *testing.T) {
 			Message: "No Prometheus service found in this cluster",
 		},
 		{
-			Type:    "Ready",
+			Type:    "Deployed",
 			Status:  metav1.ConditionTrue,
 			Reason:  "Deployed",
-			Message: "Metrics collector deployed and functional",
+			Message: "Metrics collector deployed",
 		},
 		{
 			Type:    "Disabled",
@@ -57,7 +57,7 @@ func TestReportStatus(t *testing.T) {
 		},
 	}
 
-	statusList := []string{"NotSupported", "Ready", "Disabled"}
+	statusList := []string{"NotSupported", "Deployed", "Disabled"}
 	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
 	c := fake.NewFakeClient(objs...)
 	for i := range statusList {
