@@ -112,8 +112,7 @@ func createDeployment(clusterID string, obsAddonSpec oav1beta1.ObservabilityAddo
 	}
 
 	commands := []string{
-		"/usr/bin/telemeter-client",
-		"--id=$(ID)",
+		"/usr/bin/metrics-collector",
 		"--from=$(FROM)",
 		"--to-upload=$(TO)",
 		"--from-ca-file=" + caFile,
@@ -166,10 +165,6 @@ func createDeployment(clusterID string, obsAddonSpec oav1beta1.ObservabilityAddo
 								{
 									Name:  "TO",
 									Value: hubInfo.Endpoint,
-								},
-								{
-									Name:  "ID",
-									Value: clusterID,
 								},
 							},
 							VolumeMounts:    mounts,

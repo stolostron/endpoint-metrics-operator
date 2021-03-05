@@ -13,10 +13,10 @@ import (
 
 var (
 	conditions = map[string]map[string]string{
-		"Ready": map[string]string{
-			"type":    "Available",
+		"Deployed": map[string]string{
+			"type":    "Deployed",
 			"reason":  "Deployed",
-			"message": "Metrics collector deployed and functional"},
+			"message": "Metrics collector deployed"},
 		"Disabled": map[string]string{
 			"type":    "Disabled",
 			"reason":  "Disabled",
