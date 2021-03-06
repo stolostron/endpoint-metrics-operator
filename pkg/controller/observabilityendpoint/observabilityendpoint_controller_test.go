@@ -311,8 +311,8 @@ func TestObservabilityAddonController(t *testing.T) {
 }
 
 func TestCreateOCPClient(t *testing.T) {
-	_, err := createOCPClient()
-	if err == nil {
+	c, err := createOCPClient()
+	if err == nil && c == nil {
 		t.Fatalf("Failed to catch error when creating ocpclient: (%v)", err)
 	}
 }
