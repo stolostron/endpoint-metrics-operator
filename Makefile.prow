@@ -1,0 +1,21 @@
+# Copyright Contributors to the Open Cluster Management project
+
+-include /opt/build-harness/Makefile.prow
+
+PKGS=$(shell go list ./... | grep -v '/vendor/|/test/(?!e2e)')
+
+.PHONY: copyright-check test-unit build vendor
+
+copyright-check:
+	./cicd-scripts/copyright-check.sh $(TRAVIS_BRANCH)
+
+test-unit: vendor
+	go test ./...
+
+build:
+	CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o build/_output/bin/endpoint-monitoring-operator github.com/open-cluster-management/endpoint-metrics-operator/cmd/manager
+
+vendor:
+	go mod vendor
+	go mod tidy
+	go mod verify
