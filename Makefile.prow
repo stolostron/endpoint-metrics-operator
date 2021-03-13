@@ -12,6 +12,9 @@ copyright-check:
 test-unit: vendor
 	go test ./...
 
+e2e-tests:
+	@echo "TODO: Run e2e-tests"
+
 build:
 	CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o build/_output/bin/endpoint-monitoring-operator github.com/open-cluster-management/endpoint-metrics-operator/cmd/manager
 
