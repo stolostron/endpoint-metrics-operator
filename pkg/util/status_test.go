@@ -3,11 +3,11 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -32,7 +32,7 @@ func TestReportStatus(t *testing.T) {
 	oa := newObservabilityAddon(name, testNamespace)
 	objs := []runtime.Object{oa}
 	s := scheme.Scheme
-	if err := apis.AddToScheme(s); err != nil {
+	if err := oav1beta1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
@@ -58,10 +58,10 @@ func TestReportStatus(t *testing.T) {
 	}
 
 	statusList := []string{"NotSupported", "Deployed", "Disabled"}
-	s.AddKnownTypes(oav1beta1.SchemeGroupVersion, oa)
+	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
 	c := fake.NewFakeClient(objs...)
 	for i := range statusList {
-		ReportStatus(c, oa, statusList[i])
+		ReportStatus(context.TODO(), c, oa, statusList[i])
 		if oa.Status.Conditions[0].Message != expectedStatus[i].Message || oa.Status.Conditions[0].Reason != expectedStatus[i].Reason || oa.Status.Conditions[0].Status != expectedStatus[i].Status || oa.Status.Conditions[0].Type != expectedStatus[i].Type {
 			t.Errorf("Error: Status not updated. Expected: %s, Actual: %s", expectedStatus[i], fmt.Sprintf("%+v\n", oa.Status.Conditions[0]))
 		}
