@@ -77,19 +77,31 @@ cluster-name: "my_cluster"
 endpoint: "http://observatorium-api-open-cluster-management-observability.apps.stage3.demo.red-chesterfield.com/api/v1/receive"
 ```
 
-4. Update the value of environment variable `COLLECTOR_IMAGE` in the endpoint-metrics-operator deployment, for example: `quay.io/open-cluster-management/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10`
+4. Create the configmap named `observability-metrics-allowlist` in namespace `open-cluster-management-addon-observability`:
+
+```
+$ kubectl apply -n open-cluster-management-addon-observability -f https://raw.githubusercontent.com/open-cluster-management/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml
+```
+
+5. Update the value of environment variable `COLLECTOR_IMAGE` in the endpoint-metrics-operator deployment, for example: `quay.io/open-cluster-management/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10`
 
 ```
 $ sed -i 's~REPLACE_WITH_METRICS_COLLECTOR_IMAGE~quay.io/open-cluster-management/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10~g' config/manager/manager.yaml
 ```
 
-5. Replace the operator image and deploy the endpoint-metrics-operator:
+6. Update the value of environment variable `HUB_NAMESPACE` with the actual hub namespace, for example: `cluster1`
+
+```
+$ sed -i 's~REPLACE_WITH_HUB_NAMESPACE~cluster1~g' config/manager/manager.yaml
+```
+
+7. Replace the operator image and deploy the endpoint-metrics-operator:
 
 ```
 $ make -f Makefile.prow deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/endpoint-metrics-operator:latest
 ```
 
-6. Deploy the endpoint-metrics-operator CR:
+8. Deploy the endpoint-metrics-operator CR:
 
 ```
 $ kubectl -n open-cluster-management-addon-observability apply -f config/samples/observability.open-cluster-management.io_v1beta1_observabilityaddon.yaml

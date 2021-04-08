@@ -18,7 +18,7 @@ spec:
       serviceAccountName: endpoint-observability-operator
       containers:
       - name: endpoint-observability-operator
-        image: quay.io/open-cluster-management/endpoint-monitoring-operator:latest
+        image: quay.io/open-cluster-management/endpoint-metrics-operator:latest
         imagePullPolicy: Always
         command:
         - endpoint-monitoring-operator
@@ -45,6 +45,8 @@ spec:
           value: REPLACE_WITH_METRICS_COLLECTOR_IMAGE
         - name: HUB_KUBECONFIG
           value: /spoke/hub-kubeconfig/kubeconfig
+        - name: HUB_NAMESPACE
+          value: REPLACE_WITH_HUB_NAMESPACE
         volumeMounts:
         - mountPath: /spoke/hub-kubeconfig
           name: hub-kubeconfig-secret

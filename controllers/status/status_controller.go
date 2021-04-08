@@ -13,9 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 )
@@ -98,6 +96,6 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Watches(&source.Kind{Type: &oav1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(pred)).
+		For(&oav1beta1.ObservabilityAddon{}, builder.WithPredicates(pred)).
 		Complete(r)
 }

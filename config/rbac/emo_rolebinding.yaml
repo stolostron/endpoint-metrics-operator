@@ -6,7 +6,7 @@ metadata:
   name: endpoint-observability-operator
 roleRef:
   kind: ClusterRole
-  name: endpoint-monitoring-operator
+  name: endpoint-observability-operator
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
