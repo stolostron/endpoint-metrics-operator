@@ -37,9 +37,6 @@ ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_UID=1001 \
     USER_NAME=endpoint-monitoring-operator
 
-# install templates
-COPY manifests /usr/local/manifests
-
 # install operator binary
 COPY build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
 USER ${USER_UID}

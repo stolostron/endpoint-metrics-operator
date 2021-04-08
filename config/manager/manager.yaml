@@ -1,55 +1,56 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-  name: system
----
+# Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
-  namespace: system
-  labels:
-    control-plane: controller-manager
+  name: endpoint-observability-operator
+  namespace: open-cluster-management-addon-observability
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      control-plane: controller-manager
-  replicas: 1
+      name: endpoint-observability-operator
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        name: endpoint-observability-operator
     spec:
-      securityContext:
-        runAsUser: 65532
+      serviceAccountName: endpoint-observability-operator
       containers:
-      - command:
-        - /manager
-        args:
-        - --leader-elect
-        image: controller:latest
-        name: manager
-        securityContext:
-          allowPrivilegeEscalation: false
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
-      terminationGracePeriodSeconds: 10
+      - name: endpoint-observability-operator
+        image: quay.io/open-cluster-management/endpoint-monitoring-operator:latest
+        imagePullPolicy: Always
+        command:
+        - endpoint-monitoring-operator
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        - name: OPERATOR_NAME
+          value: "endpoint-monitoring-operator"
+        - name: COLLECTOR_IMAGE
+          value: REPLACE_WITH_METRICS_COLLECTOR_IMAGE
+        - name: HUB_KUBECONFIG
+          value: /spoke/hub-kubeconfig/kubeconfig
+        volumeMounts:
+        - mountPath: /spoke/hub-kubeconfig
+          name: hub-kubeconfig-secret
+          readOnly: true
+      volumes:
+      - name: hub-kubeconfig-secret
+        secret:
+          defaultMode: 420
+          secretName: hub-kube-config
