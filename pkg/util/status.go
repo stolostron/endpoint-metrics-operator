@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,7 +32,7 @@ var (
 	}
 )
 
-func ReportStatus(c client.Client, i *oav1beta1.ObservabilityAddon, t string) {
+func ReportStatus(ctx context.Context, client client.Client, i *oav1beta1.ObservabilityAddon, t string) {
 	i.Status.Conditions = []oav1beta1.StatusCondition{
 		{
 			Type:               t,
@@ -42,7 +42,7 @@ func ReportStatus(c client.Client, i *oav1beta1.ObservabilityAddon, t string) {
 			Message:            conditions[t]["message"],
 		},
 	}
-	err := c.Status().Update(context.TODO(), i)
+	err := client.Status().Update(ctx, i)
 	if err != nil {
 		log.Error(err, "Failed to update status for observabilityaddon")
 	}

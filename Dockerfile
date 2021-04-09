@@ -39,10 +39,6 @@ ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
 
 # install operator binary
 COPY build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
-
-COPY build/bin /usr/local/bin
-RUN  /usr/local/bin/user_setup
-
-ENTRYPOINT ["/usr/local/bin/entrypoint"]
-
 USER ${USER_UID}
+
+ENTRYPOINT ["/usr/local/bin/endpoint-monitoring-operator"]

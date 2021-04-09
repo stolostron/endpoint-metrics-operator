@@ -10,85 +10,124 @@ The guide is used for developer to build and install the endpoint-monitoring-ope
 
 ### Prerequisites
 
-- [git][git_tool]
-- [go][go_tool] version v1.13.9+.
-- [docker][docker_tool] version 19.03+.
-- [kubectl][kubectl_tool] version v1.14+.
-- Access to a Kubernetes v1.11.3+ cluster.
-
-### Install the Operator SDK CLI
-
-Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires [version v0.17.0][operator_sdk_v0.17.0].
-Or just use this command to download `operator-sdk` for Mac:
-```
-curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-apple-darwin -o operator-sdk
-```
+- git
+- go version v1.15+
+- docker version 17.03+
+- kubectl version v1.16.3+
+- kustomize version v3.8.5+
+- operator-sdk version v1.4.2+
+- access to a Kubernetes v1.16.0+ cluster
 
 ### Build the Operator
 
-- git clone this repository.
-- `export GOPRIVATE=github.com/open-cluster-management`
-- `go mod vendor`
-- `make docker-binary`
-- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/endpoint-monitoring-operator:v0.1.0.
-- push the image to the repo
+1. Check out the endpoint-metrics-operator repository.
 
+```
+$ git clone git@github.com:open-cluster-management/endpoint-metrics-operator.git
+```
+
+2. Build the endpoint-metrics-operator image and push it to a public registry, such as quay.io:
+
+```
+$ make -f Makefile.prow docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/endpoint-metrics-operator:latest
+```
 
 ### Deploy this Operator
 
-1. Prerequisite
-- Update the image in `deploy/operator.yaml`, to use the image built out in above step.
-- Update the value of env COLLECTOR_IMAGE in `deploy/operator.yaml`, for example: quay.io/open-cluster-management/metrics-collector:2.1.0-PR6-1b7cdb7b33bd9baed230a367465ec7238204648a.
-- Update your namespace in `deploy/role_binding.yaml`.
-- Create the pull secret that used to pull the images, and set it in `deploy/service_account.yaml`
-- Create the secret hub-info-secret.
+1. Create the `open-cluster-management-addon-observability` namespace if it doesn't exist:
+
 ```
+$ kubectl create ns open-cluster-management-addon-observability
+```
+
+2. Create the secret named `hub-kube-config` in namespace `open-cluster-management-addon-observability` about the hub cluster information:
+
+```
+$ cat << EOF | kubectl apply -n open-cluster-management-addon-observability -f -
+kind: Secret
+apiVersion: v1
+metadata:
+  name: hub-kube-config
+type: Opaque
+data:
+    kubeconfig: ***
+EOF
+```
+
+> Note: the content of `kubeconfig` is base64-encoded content of kubeconfig for the hub cluster.
+
+3. Create the secret named `hub-info-secret` in namespace `open-cluster-management-addon-observability` about the hub cluster information:
+
+```
+$ cat << EOF | kubectl apply -n open-cluster-management-addon-observability -f -
 kind: Secret
 apiVersion: v1
 metadata:
   name: hub-info-secret
+type: Opaque
 data:
     hub-info.yaml: ***
-type: Opaque
-``` 
-for the content of hub-info.yaml, it's base64-encoded yaml. The original yaml content is like below.
+EOF
 ```
-{
-  "cluster-name": "my_cluster",
-  "endpoint": "http://observatorium-api-open-cluster-management-observability.apps.stage3.demo.red-chesterfield.com/api/v1/receive"
-}
-```
-**cluster-name** is the name for your cluster, you can set any non-empty string for it. **endpoint** is the observatorium api gateway url which exposed on hub cluster 
 
-2. Apply the manifests
+> Note: the content of `hub-info.yaml` is base64-encoded yaml that contains the hub cluster name and the observatorium api gateway URL which is exposed on the hub cluster. The original yaml content resembles below:
+
+```yaml
+cluster-name: "my_cluster"
+endpoint: "http://observatorium-api-open-cluster-management-observability.apps.stage3.demo.red-chesterfield.com/api/v1/receive"
 ```
-kubectl apply -f deploy/crds/
-kubectl apply -f deploy/
+
+4. Create the configmap named `observability-metrics-allowlist` in namespace `open-cluster-management-addon-observability`:
 
 ```
-After installed successfully, you will see the following output:
-`oc get pod`
+$ kubectl apply -n open-cluster-management-addon-observability -f https://raw.githubusercontent.com/open-cluster-management/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml
 ```
-NAME                                         READY   STATUS    RESTARTS   AGE
-endpoint-monitoring-operator-68fbdbc66d-wm6rq   1/1     Running   0          46h
-metrics-collector-deployment-57d84fcf9b-tnsd4   1/1     Running   0          46h
+
+5. Update the value of environment variable `COLLECTOR_IMAGE` in the endpoint-metrics-operator deployment, for example: `quay.io/open-cluster-management/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10`
+
 ```
-`oc get observabilityaddon`
+$ sed -i 's~REPLACE_WITH_METRICS_COLLECTOR_IMAGE~quay.io/open-cluster-management/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10~g' config/manager/manager.yaml
 ```
-NAME                      AGE
-observability-addon   46h
+
+6. Update the value of environment variable `HUB_NAMESPACE` with the actual hub namespace, for example: `cluster1`
+
 ```
-**Notice**: To deploy the observabilityaddon CR in local managed cluster just for dev/test purpose. In real topology, the observabilityaddon CR will be created in hub cluster, the endpoint-monitoring-operator should talk to api server of hub cluster to watch those CRs, and then perform changes on managed cluster. 
+$ sed -i 's~REPLACE_WITH_HUB_NAMESPACE~cluster1~g' config/manager/manager.yaml
+```
+
+7. Replace the operator image and deploy the endpoint-metrics-operator:
+
+```
+$ make -f Makefile.prow deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/endpoint-metrics-operator:latest
+```
+
+8. Deploy the endpoint-metrics-operator CR:
+
+```
+$ kubectl -n open-cluster-management-addon-observability apply -f config/samples/observability.open-cluster-management.io_v1beta1_observabilityaddon.yaml
+```
+
+### Verify the Installation
+
+After installed successfully, you will see the following pod are running:
+
+```
+# kubectl -n open-cluster-management-addon-observability get pod
+NAME                                               READY   STATUS    RESTARTS   AGE
+endpoint-observability-operator-7cf545f45c-cfjlk   1/1     Running   0          136m
+metrics-collector-deployment-6dc9998cb-f2wd7       1/1     Running   0          136m
+```
+
+You should also see the CR created in the cluster:
+
+```
+# kubectl -n open-cluster-management-addon-observability get observabilityaddon
+NAME                  AGE
+observability-addon   137m
+```
+
+**Notice**: To deploy the `observabilityaddon` CR in local managed cluster just for dev/test purpose. In real topology, the `observabilityaddon` CR will be created in hub cluster, the endpoint-monitoring-operator should talk to api server of hub cluster to watch those CRs, and then perform changes on managed cluster. 
 
 ### View metrics in dashboard
+
 Access Grafana console in hub cluster at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"
-
-
-[install_kind]: https://github.com/kubernetes-sigs/kind
-[install_guide]: https://github.com/operator-framework/operator-sdk/blob/master/doc/user/install-operator-sdk.md
-[git_tool]:https://git-scm.com/downloads
-[go_tool]:https://golang.org/dl/
-[docker_tool]:https://docs.docker.com/install/
-[kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
-[operator_sdk_v0.17.0]:https://github.com/operator-framework/operator-sdk/releases/tag/v0.17.0
-

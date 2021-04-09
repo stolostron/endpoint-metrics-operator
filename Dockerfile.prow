@@ -1,5 +1,12 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project.
+FROM registry.ci.openshift.org/open-cluster-management/builder:go1.15-linux AS builder
+
+WORKDIR /workspace
+COPY . .
+
+RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator main.go
+
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 ARG VCS_REF
@@ -38,11 +45,7 @@ ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_NAME=endpoint-monitoring-operator
 
 # install operator binary
-COPY build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
-
-COPY build/bin /usr/local/bin
-RUN  /usr/local/bin/user_setup
-
-ENTRYPOINT ["/usr/local/bin/entrypoint"]
-
+COPY --from=builder /workspace/build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
 USER ${USER_UID}
+
+ENTRYPOINT ["/usr/local/bin/endpoint-monitoring-operator"]
