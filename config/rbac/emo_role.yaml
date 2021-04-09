@@ -105,3 +105,15 @@ rules:
   - appliedmanifestworks/finalizers
   verbs:
   - update
+- apiGroups:
+  - "coordination.k8s.io"
+  resources:
+  - leases
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
