@@ -29,7 +29,8 @@ const (
 	selectorValue        = "metrics-collector"
 	caMounthPath         = "/etc/serving-certs-ca-bundle"
 	caVolName            = "serving-certs-ca-bundle"
-	mtlsCertName         = "observability-managed-cluster-certs"
+	mtlsCertName         = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	mtlsCaName           = "observability-managed-cluster-certs"
 	limitBytes           = 1073741824
 	defaultInterval      = "30s"
 )
@@ -65,18 +66,30 @@ func createDeployment(clusterID string, obsAddonSpec oashared.ObservabilityAddon
 
 	volumes := []corev1.Volume{
 		{
-			Name: mtlsCertName,
+			Name: "mtlscerts",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: mtlsCertName,
 				},
 			},
 		},
+		{
+			Name: "mtlsca",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: mtlsCaName,
+				},
+			},
+		},
 	}
 	mounts := []corev1.VolumeMount{
 		{
-			Name:      mtlsCertName,
-			MountPath: "/tlscerts",
+			Name:      "mtlscerts",
+			MountPath: "/tlscerts/certs",
+		},
+		{
+			Name:      "mtlsca",
+			MountPath: "/tlscerts/ca",
 		},
 	}
 	caFile := caMounthPath + "/service-ca.crt"
