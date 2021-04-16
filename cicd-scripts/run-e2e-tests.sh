@@ -1,13 +1,11 @@
 #!/bin/bash
 # Copyright (c) 2020 Red Hat, Inc.
 
-echo "<repo>/<component>:<tag> : $1"
-
 git config --global url."https://$GITHUB_TOKEN@github.com/open-cluster-management".insteadOf "https://github.com/open-cluster-management"
 
 WORKDIR=`pwd`
 cd ${WORKDIR}/..
-git clone https://github.com/open-cluster-management/observability-kind-cluster.git
+git clone --depth 1 -b release-2.2 https://github.com/open-cluster-management/observability-kind-cluster.git
 cd observability-kind-cluster
 ./setup.sh $1
 if [ $? -ne 0 ]; then
@@ -16,32 +14,13 @@ if [ $? -ne 0 ]; then
 fi
 
 cd ${WORKDIR}/..
-git clone https://github.com/open-cluster-management/observability-e2e-test.git
+git clone --depth 1 -b release-2.2 https://github.com/open-cluster-management/observability-e2e-test.git
 cd observability-e2e-test
 
-go get -u github.com/onsi/ginkgo/ginkgo
-
-export KUBECONFIG=$HOME/.kube/kind-config-hub
-export SKIP_INSTALL_STEP=true
-
-git clone https://github.com/open-cluster-management/observability-gitops.git
-
-printf "options:" >> resources/options.yaml
-printf "\n  hub:" >> resources/options.yaml
-printf "\n    baseDomain: placeholder" >> resources/options.yaml
-printf "\n    masterURL: https://127.0.0.1:32806" >> resources/options.yaml
-printf "\n    grafanaURL: http://127.0.0.1" >> resources/options.yaml
-printf "\n    grafanaHost: grafana-test" >> resources/options.yaml
-printf "\n  clusters:" >> resources/options.yaml
-printf "\n    - name: spoke" >> resources/options.yaml
-printf "\n      masterURL: https://127.0.0.1:32807" >> resources/options.yaml
-printf "\n      kubeconfig: $HOME/.kube/kind-config-spoke" >> resources/options.yaml
-
-ginkgo -v ./pkg/tests -- -options=../../resources/options.yaml
-
-cat ./pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
+# run test cases
+./cicd-scripts/tests.sh
 if [ $? -ne 0 ]; then
     echo "Cannot pass all test cases."
-    cat results.xml
+    cat ./pkg/tests/results.xml
     exit 1
 fi
