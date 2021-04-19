@@ -47,8 +47,9 @@ var (
 )
 
 type MetricsAllowlist struct {
-	NameList  []string `yaml:"names"`
-	MatchList []string `yaml:"matches"`
+	NameList  []string          `yaml:"names"`
+	MatchList []string          `yaml:"matches"`
+	ReNameMap map[string]string `yaml:"renames"`
 }
 
 // HubInfo is the struct for hub info
@@ -136,10 +137,13 @@ func createDeployment(clusterID string, obsAddonSpec oashared.ObservabilityAddon
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 	}
 	for _, metrics := range allowlist.NameList {
-		commands = append(commands, "--match={__name__=\""+metrics+"\"}")
+		commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
 	}
 	for _, match := range allowlist.MatchList {
-		commands = append(commands, "--match={"+match+"}")
+		commands = append(commands, fmt.Sprintf("--match={%s}", match))
+	}
+	for k, v := range allowlist.ReNameMap {
+		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, v))
 	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
