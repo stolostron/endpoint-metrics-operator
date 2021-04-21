@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
@@ -90,7 +91,11 @@ func TestPredFunc(t *testing.T) {
 						ResourceVersion: "2",
 					},
 					Spec: appsv1.DeploymentSpec{
-						Replicas: int32Ptr(2),
+						Template: v1.PodTemplateSpec{
+							Spec: v1.PodSpec{
+								ServiceAccountName: "sa1",
+							},
+						},
 					},
 				},
 				ObjectOld: &appsv1.Deployment{
@@ -100,7 +105,11 @@ func TestPredFunc(t *testing.T) {
 						ResourceVersion: "1",
 					},
 					Spec: appsv1.DeploymentSpec{
-						Replicas: int32Ptr(1),
+						Template: v1.PodTemplateSpec{
+							Spec: v1.PodSpec{
+								ServiceAccountName: "sa2",
+							},
+						},
 					},
 				},
 			}
@@ -113,7 +122,7 @@ func TestPredFunc(t *testing.T) {
 					t.Fatalf("pre func return true on same resource version in case: (%v)", c.caseName)
 				}
 				ue.ObjectNew.SetResourceVersion("2")
-				ue.ObjectNew.(*appsv1.Deployment).Spec.Replicas = int32Ptr(1)
+				ue.ObjectNew.(*appsv1.Deployment).Spec.Template.Spec.ServiceAccountName = "sa2"
 				if pred.UpdateFunc(ue) {
 					t.Fatalf("pre func return true on same deployment spec in case: (%v)", c.caseName)
 				}
