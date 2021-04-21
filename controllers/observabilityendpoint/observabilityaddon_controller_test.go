@@ -29,7 +29,6 @@ const (
 	testNamespace   = "test-ns"
 	testHubNamspace = "test-hub-ns"
 	hubInfoName     = "hub-info-secret"
-	podName         = "metrics-collector-deployment-abc-xyz"
 )
 
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
@@ -41,18 +40,6 @@ func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon
 		Spec: oashared.ObservabilityAddonSpec{
 			EnableMetrics: true,
 			Interval:      60,
-		},
-	}
-}
-
-func newPod() *corev1.Pod {
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				selectorKey: selectorValue,
-			},
 		},
 	}
 }
@@ -210,11 +197,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		}
 	}
 
-	// test reconcile metrics collector pod deleted if cert secret updated
-	err = c.Create(ctx, newPod())
-	if err != nil {
-		t.Fatalf("Failed to create pod: (%v)", err)
-	}
+	// test reconcile metrics collector deployment updated if cert secret updated
 	req = ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      mtlsCertName,
@@ -225,11 +208,13 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile for update: (%v)", err)
 	}
-	pod := &corev1.Pod{}
-	err = c.Get(ctx, types.NamespacedName{Name: podName,
-		Namespace: namespace}, pod)
-	if !errors.IsNotFound(err) {
-		t.Fatal("Pod not deleted")
+	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, deploy)
+	if err != nil {
+		t.Fatalf("Metrics collector deployment not found: (%v)", err)
+	}
+	if deploy.Spec.Template.ObjectMeta.Labels[restartLabel] == "" {
+		t.Fatal("Deployment not updated")
 	}
 
 	// test reconcile  metrics collector's replicas set to 0 if observability disabled

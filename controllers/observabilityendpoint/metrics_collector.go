@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"time"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -39,6 +40,7 @@ const (
 	kindClusterID   = "kind-cluster-id"
 	kindClusterHost = "observatorium.hub"
 	kindClusterIP   = "172.17.0.2"
+	restartLabel    = "cert/time-restarted"
 )
 
 var (
@@ -217,20 +219,17 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 			return false, err
 		}
 	} else {
-		if !reflect.DeepEqual(found.Spec, deployment.Spec) {
+		if !reflect.DeepEqual(found.Spec.Template.Spec, deployment.Spec.Template.Spec) || forceRestart {
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			if forceRestart {
+				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+			}
 			err = client.Update(ctx, deployment)
 			if err != nil {
 				log.Error(err, "Failed to update metrics-collector deployment")
 				return false, err
 			}
 			log.Info("Updated metrics-collector deployment ")
-		}
-		if forceRestart {
-			err := deletePod(ctx, client)
-			if err != nil {
-				return false, err
-			}
 		}
 	}
 	return true, nil
@@ -275,29 +274,4 @@ func getMetricsAllowlist(ctx context.Context, client client.Client) MetricsAllow
 		}
 	}
 	return *l
-}
-
-func deletePod(ctx context.Context, c client.Client) error {
-	podList := &corev1.PodList{}
-	options := []client.ListOption{
-		client.InNamespace(namespace),
-		client.MatchingLabels(map[string]string{
-			selectorKey: selectorValue,
-		}),
-	}
-	err := c.List(ctx, podList, options...)
-	if err != nil && errors.IsNotFound(err) {
-		log.Error(err, "Failed to list pods of metrics collector")
-		return err
-	}
-	for index := range podList.Items {
-		pod := podList.Items[index]
-		err := c.Delete(ctx, &pod)
-		if err != nil {
-			log.Error(err, "Failed to delete pod", "name", pod.Name)
-			return err
-		}
-		log.Info("Deleted pod to restart", "name", pod.Name)
-	}
-	return nil
 }

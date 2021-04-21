@@ -40,7 +40,8 @@ func getPred(name string, namespace string,
 				// also check objectNew string in case Kind is empty
 				if strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
 					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
-					if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec, e.ObjectOld.(*v1.Deployment).Spec) {
+					if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec.Template.Spec,
+						e.ObjectOld.(*v1.Deployment).Spec.Template.Spec) {
 						return true
 					}
 				} else if e.ObjectNew.GetName() == obAddonName ||
