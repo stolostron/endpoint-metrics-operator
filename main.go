@@ -112,6 +112,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// start lease
+	util.StartLease()
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
