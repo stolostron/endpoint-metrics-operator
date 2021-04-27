@@ -1,6 +1,6 @@
 module github.com/open-cluster-management/endpoint-metrics-operator
 
-go 1.15
+go 1.16
 
 require (
 	github.com/open-cluster-management/addon-framework v0.0.0-20210419013051-38730a847aff
