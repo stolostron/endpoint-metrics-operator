@@ -188,6 +188,7 @@ func createDeployment(clusterID string, obsAddonSpec oashared.ObservabilityAddon
 							},
 							VolumeMounts:    mounts,
 							ImagePullPolicy: corev1.PullAlways,
+							Resources:       obsAddonSpec.Resources,
 						},
 					},
 					Volumes: volumes,
