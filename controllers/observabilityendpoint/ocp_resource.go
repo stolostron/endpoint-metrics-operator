@@ -164,3 +164,13 @@ func getClusterID(ctx context.Context, ocpClient ocpClientSet.Interface) (string
 
 	return string(clusterVersion.Spec.ClusterID), nil
 }
+
+func getNodes(ctx context.Context, client client.Client) (*corev1.NodeList, error) {
+	nodes := &corev1.NodeList{}
+	err := client.List(ctx, nodes)
+	if err != nil {
+		log.Error(err, "Failed to get node list")
+		return nil, err
+	}
+	return nodes, nil
+}

@@ -56,22 +56,22 @@ func TestMetricsCollector(t *testing.T) {
 	ctx := context.TODO()
 	c := fake.NewFakeClient(allowlistCM)
 	// Default deployment with instance count 1
-	_, err := updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, 1, false)
+	_, err := updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, "", 1, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 	// Update deployment to reduce instance count to zero
-	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, 0, false)
+	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, "", 0, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID+"-update", 1, false)
+	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID+"-update", "SNO", 1, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID+"-update", 1, true)
+	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID+"-update", "SNO", 1, true)
 	if err != nil {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}
