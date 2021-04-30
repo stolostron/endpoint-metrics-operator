@@ -52,6 +52,13 @@ type MetricsAllowlist struct {
 	NameList  []string          `yaml:"names"`
 	MatchList []string          `yaml:"matches"`
 	ReNameMap map[string]string `yaml:"renames"`
+	RuleList  []Rule            `yaml:"rules"`
+}
+
+// Rule is the struct for recording rules and alert rules
+type Rule struct {
+	Record string `yaml:"record"`
+	Expr   string `yaml:"expr"`
 }
 
 // HubInfo is the struct for hub info
@@ -150,6 +157,9 @@ func createDeployment(clusterID string, clusterType string,
 	}
 	for k, v := range allowlist.ReNameMap {
 		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, v))
+	}
+	for _, rule := range allowlist.RuleList {
+		commands = append(commands, fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr))
 	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
