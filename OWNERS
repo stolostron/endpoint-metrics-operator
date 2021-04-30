@@ -1,13 +1,9 @@
 approvers:
-- clyang82
-- haoqing0110
 - marcolan018
 - morvencao
+- haoqing0110
 - songleo
 
-approvers:
+reviewers:
 - clyang82
-- haoqing0110
-- marcolan018
-- morvencao
-- songleo
+- bjoydeep
