@@ -60,7 +60,8 @@ type HubInfo struct {
 	Endpoint    string `yaml:"endpoint"`
 }
 
-func createDeployment(clusterID string, obsAddonSpec oashared.ObservabilityAddonSpec,
+func createDeployment(clusterID string, clusterType string,
+	obsAddonSpec oashared.ObservabilityAddonSpec,
 	hubInfo HubInfo, allowlist MetricsAllowlist, replicaCount int32) *appsv1.Deployment {
 	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
 	if fmt.Sprint(obsAddonSpec.Interval) == "" {
@@ -134,9 +135,12 @@ func createDeployment(clusterID string, obsAddonSpec oashared.ObservabilityAddon
 		"--from-ca-file=" + caFile,
 		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
 		"--interval=" + interval,
-		"--label=\"cluster=" + hubInfo.ClusterName + "\"",
-		"--label=\"clusterID=" + clusterID + "\"",
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
+		fmt.Sprintf("--label=\"cluster=%s\"", hubInfo.ClusterName),
+		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
+	}
+	if clusterType != "" {
+		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", clusterType))
 	}
 	for _, metrics := range allowlist.NameList {
 		commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
@@ -198,11 +202,11 @@ func createDeployment(clusterID string, obsAddonSpec oashared.ObservabilityAddon
 }
 
 func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo HubInfo, clusterID string,
+	hubInfo HubInfo, clusterID string, clusterType string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
 	list := getMetricsAllowlist(ctx, client)
-	deployment := createDeployment(clusterID, obsAddonSpec, hubInfo, list, replicaCount)
+	deployment := createDeployment(clusterID, clusterType, obsAddonSpec, hubInfo, list, replicaCount)
 	found := &appsv1.Deployment{}
 	err := client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)

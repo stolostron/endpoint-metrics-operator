@@ -117,6 +117,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		clusterID = ""
 	}
 
+	clusterType := ""
+	nodes, err := getNodes(ctx, r.Client)
+	if err == nil && len(nodes.Items) == 1 {
+		clusterType = "SNO"
+	}
+
 	err = createMonitoringClusterRoleBinding(ctx, r.Client)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -142,7 +148,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if req.Name == mtlsCertName || req.Name == mtlsCaName {
 			forceRestart = true
 		}
-		created, err := updateMetricsCollector(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, 1, forceRestart)
+		created, err := updateMetricsCollector(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 1, forceRestart)
 		if err != nil {
 			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded")
 			return ctrl.Result{}, err
@@ -151,7 +157,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed")
 		}
 	} else {
-		deleted, err := updateMetricsCollector(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, 0, false)
+		deleted, err := updateMetricsCollector(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
