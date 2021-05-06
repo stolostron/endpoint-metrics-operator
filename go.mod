@@ -3,9 +3,10 @@ module github.com/open-cluster-management/endpoint-metrics-operator
 go 1.16
 
 require (
+	github.com/Azure/go-autorest/autorest/adal v0.9.4 // indirect
 	github.com/open-cluster-management/addon-framework v0.0.0-20210419013051-38730a847aff
 	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
-	github.com/open-cluster-management/multicluster-observability-operator v0.0.0-20210407053447-55ce916b0429
+	github.com/open-cluster-management/multicluster-observability-operator v0.0.0-20210503035427-4955ac5d5746
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
 	gopkg.in/yaml.v2 v2.4.0
