@@ -11,11 +11,14 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
+	"github.com/IBM/controller-filtered-cache/filteredcache"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -63,6 +66,22 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	namespace := os.Getenv("WATCH_NAMESPACE")
+	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
+		v1.SchemeGroupVersion.WithKind("Secret"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+		},
+		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+		},
+		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+		},
+		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+		},
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -70,6 +89,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
+		NewCache:               filteredcache.NewFilteredCacheBuilder(gvkLabelMap),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

@@ -14,7 +14,7 @@ import (
 var (
 	conditions = map[string]map[string]string{
 		"Deployed": map[string]string{
-			"type":    "Deployed",
+			"type":    "Progressing",
 			"reason":  "Deployed",
 			"message": "Metrics collector deployed"},
 		"Disabled": map[string]string{
