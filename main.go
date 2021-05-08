@@ -14,7 +14,6 @@ import (
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -77,9 +76,6 @@ func main() {
 		},
 		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
-		},
-		rbacv1.SchemeGroupVersion.WithKind("ClusterRoleBinding"): {
-			FieldSelector: "metadata.name==metrics-collector-view",
 		},
 		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
