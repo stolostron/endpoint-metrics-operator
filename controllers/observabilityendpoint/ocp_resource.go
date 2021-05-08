@@ -70,8 +70,7 @@ func createMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 	}
 
 	found := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName,
-		Namespace: ""}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = client.Create(ctx, rb)
