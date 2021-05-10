@@ -29,6 +29,9 @@ names:
   - b
 matches:
   - c
+rules:
+  - record: f
+    expr: g
 `},
 	}
 }
