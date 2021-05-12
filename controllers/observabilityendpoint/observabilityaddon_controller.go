@@ -142,6 +142,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 	hubInfo.ClusterName = string(hubSecret.Data[clusterNameKey])
+
+	// create or update the cluster-monitoring-config configmap and relevant resources
+	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if obsAddon.Spec.EnableMetrics {
 		forceRestart := false
 		if req.Name == mtlsCertName || req.Name == mtlsCaName {
@@ -188,6 +194,11 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		if err != nil {
 			return false, err
 		}
+		// revert the change to openshift cluster monitoring stack
+		err = revertClusterMonitoringConfig(ctx, r.Client)
+		if err != nil {
+			return false, err
+		}
 		hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
 		err = r.HubClient.Update(ctx, hubObsAddon)
 		if err != nil {
@@ -219,6 +230,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(hubConfigName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(mtlsCertName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false))).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(metricsConfigMapName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(caConfigmapName, namespace, false, false, true))).
 		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true))).
