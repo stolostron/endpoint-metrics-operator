@@ -55,7 +55,6 @@ func newPromSvc() *corev1.Service {
 
 func newHubInfoSecret() *corev1.Secret {
 	data := []byte(`
-cluster-name: "test-cluster"
 endpoint: "http://test-endpoint"
 `)
 	return &corev1.Secret{
@@ -64,7 +63,8 @@ endpoint: "http://test-endpoint"
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
-			hubInfoKey: data,
+			hubInfoKey:     data,
+			clusterNameKey: []byte("test-cluster"),
 		},
 	}
 }
