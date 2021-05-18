@@ -143,6 +143,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		log.Error(err, "Failed to unmarshal hub info")
 		return ctrl.Result{}, err
 	}
+	hubInfo.ClusterName = string(hubSecret.Data[clusterNameKey])
 	if obsAddon.Spec.EnableMetrics {
 		forceRestart := false
 		if req.Name == mtlsCertName || req.Name == mtlsCaName {
