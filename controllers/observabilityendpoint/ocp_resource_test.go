@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
-	fakeocpclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -22,6 +21,12 @@ var (
 		ObjectMeta: metav1.ObjectMeta{Name: "version"},
 		Spec: ocinfrav1.ClusterVersionSpec{
 			ClusterID: testClusterID,
+		},
+	}
+	infra = &ocinfrav1.Infrastructure{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
+		Status: ocinfrav1.InfrastructureStatus{
+			ControlPlaneTopology: ocinfrav1.SingleReplicaTopologyMode,
 		},
 	}
 )
@@ -91,7 +96,7 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 
 func TestGetClusterID(t *testing.T) {
 	ctx := context.TODO()
-	c := fakeocpclient.NewSimpleClientset(cv)
+	c := fake.NewFakeClient(cv)
 	found, err := getClusterID(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to get clusterversion: (%v)", err)

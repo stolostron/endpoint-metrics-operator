@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -73,6 +73,7 @@ func init() {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
+	ocinfrav1.AddToScheme(s)
 
 	namespace = testNamespace
 	hubNamespace = testHubNamspace
@@ -83,16 +84,14 @@ func TestObservabilityAddonController(t *testing.T) {
 	hubObjs := []runtime.Object{}
 	hubInfo := newHubInfoSecret()
 	allowList := getAllowlistCM()
-	objs := []runtime.Object{hubInfo, allowList}
+	objs := []runtime.Object{hubInfo, allowList, cv, infra}
 
 	hubClient := fake.NewFakeClient(hubObjs...)
-	ocpClient := fakeconfigclient.NewSimpleClientset(cv)
 	c := fake.NewFakeClient(objs...)
 
 	r := &ObservabilityAddonReconciler{
 		Client:    c,
 		HubClient: hubClient,
-		OcpClient: ocpClient,
 	}
 
 	// test error in reconcile if missing obervabilityaddon
@@ -174,7 +173,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	// test reconcile w/o clusterversion(OCP 3.11)
-	r.OcpClient = fakeconfigclient.NewSimpleClientset()
+	c.Delete(ctx, cv)
 	req = ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      "install",

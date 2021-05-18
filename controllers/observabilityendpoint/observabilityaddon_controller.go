@@ -21,7 +21,6 @@ import (
 
 	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
-	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 )
 
 var (
@@ -49,7 +48,6 @@ type ObservabilityAddonReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme
 	HubClient client.Client
-	OcpClient ocpClientSet.Interface
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -111,15 +109,15 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	clusterID, err := getClusterID(ctx, r.OcpClient)
+	clusterID, err := getClusterID(ctx, r.Client)
 	if err != nil {
 		// OCP 3.11 has no cluster id, set it as empty string
 		clusterID = ""
 	}
 
 	clusterType := ""
-	nodes, err := getNodes(ctx, r.Client)
-	if err == nil && len(nodes.Items) == 1 {
+	isSNO, err := isSNO(ctx, r.Client)
+	if err == nil && isSNO {
 		clusterType = "SNO"
 	}
 

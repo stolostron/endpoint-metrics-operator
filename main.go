@@ -12,6 +12,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"github.com/IBM/controller-filtered-cache/filteredcache"
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -39,6 +40,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(oav1beta1.AddToScheme(scheme))
+	utilruntime.Must(ocinfrav1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -102,17 +104,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	ocpClient, err := util.GetOrCreateOCPClient()
-	if err != nil {
-		setupLog.Error(err, "Failed to create the OpenShift client")
-		os.Exit(1)
-	}
-
 	if err = (&obsepctl.ObservabilityAddonReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
 		HubClient: hubClient,
-		OcpClient: ocpClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
 		os.Exit(1)
