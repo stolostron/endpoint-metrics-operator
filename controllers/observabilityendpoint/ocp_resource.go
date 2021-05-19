@@ -7,12 +7,13 @@ import (
 	"os"
 	"reflect"
 
-	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -155,9 +156,9 @@ func createCAConfigmap(ctx context.Context, client client.Client) error {
 }
 
 // getClusterID is used to get the cluster uid
-func getClusterID(ctx context.Context, ocpClient ocpClientSet.Interface) (string, error) {
-	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get(ctx, "version", metav1.GetOptions{})
-	if err != nil {
+func getClusterID(ctx context.Context, c client.Client) (string, error) {
+	clusterVersion := &ocinfrav1.ClusterVersion{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "version"}, clusterVersion); err != nil {
 		log.Error(err, "Failed to get clusterVersion")
 		return "", err
 	}
@@ -165,12 +166,31 @@ func getClusterID(ctx context.Context, ocpClient ocpClientSet.Interface) (string
 	return string(clusterVersion.Spec.ClusterID), nil
 }
 
-func getNodes(ctx context.Context, client client.Client) (*corev1.NodeList, error) {
+func isSNO(ctx context.Context, c client.Client) (bool, error) {
+	infraConfig := &ocinfrav1.Infrastructure{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "cluster"}, infraConfig); err != nil {
+		log.Info("No OCP infrastructure found, determine SNO by checking master size")
+		return isSingleMaster(ctx, c)
+	}
+	if infraConfig.Status.ControlPlaneTopology == ocinfrav1.SingleReplicaTopologyMode {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func isSingleMaster(ctx context.Context, c client.Client) (bool, error) {
 	nodes := &corev1.NodeList{}
-	err := client.List(ctx, nodes)
+	opts := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{"node-role.kubernetes.io/master": ""}),
+	}
+	err := c.List(ctx, nodes, opts)
 	if err != nil {
 		log.Error(err, "Failed to get node list")
-		return nil, err
+		return false, err
 	}
-	return nodes, nil
+	if len(nodes.Items) == 1 {
+		return true, nil
+	}
+	return false, nil
 }
