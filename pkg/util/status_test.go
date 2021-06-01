@@ -44,7 +44,7 @@ func TestReportStatus(t *testing.T) {
 			Message: "No Prometheus service found in this cluster",
 		},
 		{
-			Type:    "Deployed",
+			Type:    "Progressing",
 			Status:  metav1.ConditionTrue,
 			Reason:  "Deployed",
 			Message: "Metrics collector deployed",
