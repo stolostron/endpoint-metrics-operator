@@ -35,7 +35,7 @@ var (
 func ReportStatus(ctx context.Context, client client.Client, i *oav1beta1.ObservabilityAddon, t string) {
 	i.Status.Conditions = []oav1beta1.StatusCondition{
 		{
-			Type:               t,
+			Type:               conditions[t]["type"],
 			Status:             metav1.ConditionTrue,
 			LastTransitionTime: metav1.NewTime(time.Now()),
 			Reason:             conditions[t]["reason"],
