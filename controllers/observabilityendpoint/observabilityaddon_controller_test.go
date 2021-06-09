@@ -79,6 +79,18 @@ func newAMAccessorSecret() *corev1.Secret {
 	}
 }
 
+func newClusterMonitoringConfigCM(configDataStr string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterMonitoringConfigName,
+			Namespace: promNamespace,
+		},
+		Data: map[string]string{
+			clusterMonitoringConfigDataKey: configDataStr,
+		},
+	}
+}
+
 func init() {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -92,8 +104,8 @@ func init() {
 func TestObservabilityAddonController(t *testing.T) {
 	hubInfoData := []byte(`
 endpoint: "http://test-endpoint"
-hub-alertmanager-endpoint: "http://test-alertamanger-endpoint"
-hub-alertmanager-router-ca: |
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
     -----BEGIN CERTIFICATE-----
     xxxxxxxxxxxxxxxxxxxxxxxxxxx
     -----END CERTIFICATE-----

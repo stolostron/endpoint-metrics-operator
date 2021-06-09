@@ -15,6 +15,7 @@ import (
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -22,8 +23,8 @@ const (
 	hubInfoYAML = `
 cluster-name: "test-cluster"
 endpoint: "http://test-endpoint"
-hub-alertmanager-endpoint: "http://test-alertamanger-endpoint"
-hub-alertmanager-router-ca: |
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
     -----BEGIN CERTIFICATE-----
     xxxxxxxxxxxxxxxxxxxxxxxxxxx
     -----END CERTIFICATE-----
@@ -76,20 +77,81 @@ func TestCreateDeleteHubAmAccessorTokenSecret(t *testing.T) {
 	}
 }
 
-func TestCreateOrUpdateClusterMonitoringConfig(t *testing.T) {
+func TestClusterMonitoringConfig(t *testing.T) {
+	tests := []struct {
+		name                                    string
+		ClusterMonitoringConfigCMExist          bool
+		ClusterMonitoringConfigDataYaml         string
+		ExpectedDeleteClusterMonitoringConfigCM bool
+	}{
+		{
+			name:                                    "no cluster-monitoring-config exists",
+			ClusterMonitoringConfigCMExist:          false,
+			ExpectedDeleteClusterMonitoringConfigCM: true,
+		},
+		{
+			name:                                    "cluster-monitoring-config with empty config.yaml",
+			ClusterMonitoringConfigCMExist:          true,
+			ClusterMonitoringConfigDataYaml:         "",
+			ExpectedDeleteClusterMonitoringConfigCM: true,
+		},
+		{
+			name:                           "cluster-monitoring-config with non-empty config.yaml and empty prometheusK8s",
+			ClusterMonitoringConfigCMExist: true,
+			ClusterMonitoringConfigDataYaml: `
+prometheusK8s: null`,
+			ExpectedDeleteClusterMonitoringConfigCM: true,
+		},
+		{
+			name:                           "cluster-monitoring-config with non-empty config.yaml and prometheusK8s and empty additionalAlertManagerConfigs",
+			ClusterMonitoringConfigCMExist: true,
+			ClusterMonitoringConfigDataYaml: `
+prometheusK8s:
+  additionalAlertManagerConfigs: null`,
+			ExpectedDeleteClusterMonitoringConfigCM: true,
+		},
+		{
+			name:                           "cluster-monitoring-config with non-empty config.yaml and prometheusK8s and additionalAlertManagerConfigs",
+			ClusterMonitoringConfigCMExist: true,
+			ClusterMonitoringConfigDataYaml: `
+prometheusK8s:
+  additionalAlertManagerConfigs:
+  - apiVersion: v2
+    bearerToken:
+      key: token
+      name: foo
+    pathPrefix: /
+    scheme: https
+    staticConfigs:
+    - test-host.com
+    tlsConfig:
+      insecureSkipVerify: true`,
+			ExpectedDeleteClusterMonitoringConfigCM: false,
+		},
+	}
+
 	hubInfo := &HubInfo{}
 	err := yaml.Unmarshal([]byte(hubInfoYAML), &hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
 	}
-
 	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAML))
 	amAccessSrt := newAMAccessorSecret()
-	objs := []runtime.Object{hubInfoObj, amAccessSrt}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objs := []runtime.Object{hubInfoObj, amAccessSrt}
+			if tt.ClusterMonitoringConfigCMExist {
+				objs = append(objs, newClusterMonitoringConfigCM(tt.ClusterMonitoringConfigDataYaml))
+			}
+			testCreateOrUpdateClusterMonitoringConfig(t, hubInfo, fake.NewFakeClient(objs...), tt.ExpectedDeleteClusterMonitoringConfigCM)
+		})
+	}
+}
+
+func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *HubInfo, c client.Client, expectedCMDelete bool) {
 	ctx := context.TODO()
-	c := fake.NewFakeClient(objs...)
-	err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c)
+	err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
@@ -160,8 +222,10 @@ func TestCreateOrUpdateClusterMonitoringConfig(t *testing.T) {
 
 	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
 		Namespace: promNamespace}, foundCusterMonitoringConfigMap)
-	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("the configmap %s should be deleted", clusterMonitoringConfigName)
+	if expectedCMDelete {
+		if err == nil || !errors.IsNotFound(err) {
+			t.Fatalf("the configmap %s should be deleted", clusterMonitoringConfigName)
+		}
 	}
 
 	foundHubAmAccessorSecret := &corev1.Secret{}

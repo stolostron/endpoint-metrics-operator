@@ -20,20 +20,18 @@ import (
 )
 
 const (
-	hubAmAccessorSecretName            = "observability-alertmanager-accessor"
-	hubAmAccessorSecretKey             = "token"
-	hubAmRouterCASecretName            = "hub-alertmanager-router-ca"
-	hubAmRouterCASecretKey             = "service-ca.crt"
-	additionalPromToAmConfigSecretName = "prometheus-ocm-am-config"
-	additionalPromToAmConfigKey        = "additional-alertmanager-configs.yaml"
-	clusterMonitoringConfigName        = "cluster-monitoring-config"
-	clusterMonitoringConfigDataKey     = "config.yaml"
-	clusterLabelKeyForAlerts           = "cluster"
+	hubAmAccessorSecretName        = "observability-alertmanager-accessor"
+	hubAmAccessorSecretKey         = "token"
+	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
+	hubAmRouterCASecretKey         = "service-ca.crt"
+	clusterMonitoringConfigName    = "cluster-monitoring-config"
+	clusterMonitoringConfigDataKey = "config.yaml"
+	clusterLabelKeyForAlerts       = "cluster"
 )
 
 // createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route
 func createHubAmRouterCASecret(ctx context.Context, hubInfo *HubInfo, client client.Client) error {
-	hubAmRouterCA := hubInfo.HubAlertmanagerRouterCA
+	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
 	hubAmRouterCASecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -221,7 +219,7 @@ func createOrUpdateClusterMonitoringConfig(ctx context.Context, hubInfo *HubInfo
 			},
 			Key: hubAmAccessorSecretKey,
 		},
-		StaticConfigs: []string{strings.TrimLeft(hubInfo.HubAlertmanagerEndpoint, "https://")},
+		StaticConfigs: []string{strings.TrimLeft(hubInfo.AlertmanagerEndpoint, "https://")},
 	}
 	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
