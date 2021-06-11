@@ -64,8 +64,10 @@ type Rule struct {
 
 // HubInfo is the struct for hub info
 type HubInfo struct {
-	ClusterName string `yaml:"cluster-name"`
-	Endpoint    string `yaml:"endpoint"`
+	ClusterName          string `yaml:"cluster-name"`
+	Endpoint             string `yaml:"endpoint"`
+	AlertmanagerEndpoint string `yaml:"alertmanager-endpoint"`
+	AlertmanagerRouterCA string `yaml:"alertmanager-router-ca"`
 }
 
 func createDeployment(clusterID string, clusterType string,

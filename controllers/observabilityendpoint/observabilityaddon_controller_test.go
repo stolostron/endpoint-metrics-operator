@@ -29,6 +29,7 @@ const (
 	testNamespace   = "test-ns"
 	testHubNamspace = "test-hub-ns"
 	hubInfoName     = "hub-info-secret"
+	testBearerToken = "test-bearer-token"
 )
 
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
@@ -53,10 +54,7 @@ func newPromSvc() *corev1.Service {
 	}
 }
 
-func newHubInfoSecret() *corev1.Secret {
-	data := []byte(`
-endpoint: "http://test-endpoint"
-`)
+func newHubInfoSecret(data []byte) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubConfigName,
@@ -65,6 +63,30 @@ endpoint: "http://test-endpoint"
 		Data: map[string][]byte{
 			hubInfoKey:     data,
 			clusterNameKey: []byte("test-cluster"),
+		},
+	}
+}
+
+func newAMAccessorSecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmAccessorSecretName,
+			Namespace: testNamespace,
+		},
+		Data: map[string][]byte{
+			"token": []byte(testBearerToken),
+		},
+	}
+}
+
+func newClusterMonitoringConfigCM(configDataStr string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterMonitoringConfigName,
+			Namespace: promNamespace,
+		},
+		Data: map[string]string{
+			clusterMonitoringConfigDataKey: configDataStr,
 		},
 	}
 }
@@ -80,11 +102,20 @@ func init() {
 }
 
 func TestObservabilityAddonController(t *testing.T) {
+	hubInfoData := []byte(`
+endpoint: "http://test-endpoint"
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-----
+`)
 
 	hubObjs := []runtime.Object{}
-	hubInfo := newHubInfoSecret()
+	hubInfo := newHubInfoSecret(hubInfoData)
+	amAccessSrt := newAMAccessorSecret()
 	allowList := getAllowlistCM()
-	objs := []runtime.Object{hubInfo, allowList, cv, infra}
+	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, cv, infra}
 
 	hubClient := fake.NewFakeClient(hubObjs...)
 	c := fake.NewFakeClient(objs...)

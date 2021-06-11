@@ -67,15 +67,20 @@ metadata:
   name: hub-info-secret
 type: Opaque
 data:
+    clusterName: ***
     hub-info.yaml: ***
 EOF
 ```
 
-> Note: the content of `hub-info.yaml` is base64-encoded yaml that contains the hub cluster name and the observatorium api gateway URL which is exposed on the hub cluster. The original yaml content resembles below:
+> Note: the content of `clusterName` is base64-encoded yaml of the hub cluster name, while the content of `hub-info.yaml` is base64-encoded yaml that contains the observatorium api gateway URL, hub alertmanager URl and hub router CA which is exposed on the hub cluster. The original yaml content resembles below:
 
 ```yaml
-cluster-name: "my_cluster"
 endpoint: "http://observatorium-api-open-cluster-management-observability.apps.stage3.demo.red-chesterfield.com/api/v1/receive"
+hub-alertmanager-endpoint: "https://alertmanager-open-cluster-management-observability.apps.stage3.demo.red-chesterfield.com"
+hub-alertmanager-router-ca: |
+-----BEGIN CERTIFICATE-----
+xxxxxxxxxxxxxxxxxxxxxxxxxxx
+-----END CERTIFICATE-----
 ```
 
 4. Create the configmap named `observability-metrics-allowlist` in namespace `open-cluster-management-addon-observability`:
