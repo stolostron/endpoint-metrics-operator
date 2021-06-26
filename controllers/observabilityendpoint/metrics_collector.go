@@ -6,13 +6,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -237,8 +237,8 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 			return false, err
 		}
 	} else {
-		if !apiequality.Semantic.DeepDerivative(deployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
-			!apiequality.Semantic.DeepDerivative(deployment.Spec.Replicas, found.Spec.Replicas) ||
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
+			!reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas) ||
 			forceRestart {
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 			if forceRestart {
