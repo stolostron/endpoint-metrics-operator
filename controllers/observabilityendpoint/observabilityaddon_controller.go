@@ -150,7 +150,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	if obsAddon.Spec.EnableMetrics {
 		forceRestart := false
-		if req.Name == mtlsCertName || req.Name == mtlsCaName {
+		if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == metricsConfigMapName {
 			forceRestart = true
 		}
 		created, err := updateMetricsCollector(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 1, forceRestart)
@@ -232,7 +232,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(metricsConfigMapName, namespace, true, true, false))).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(caConfigmapName, namespace, false, false, true))).
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(caConfigmapName, namespace, false, true, true))).
 		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true))).
 		Watches(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true))).
 		Complete(r)
