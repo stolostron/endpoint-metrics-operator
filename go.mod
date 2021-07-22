@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/IBM/controller-filtered-cache v0.3.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
-	github.com/open-cluster-management/addon-framework v0.0.0-20210419013051-38730a847aff
+	github.com/open-cluster-management/addon-framework v0.0.0-20210621074027-a81f712c10c2
 	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/open-cluster-management/multicluster-observability-operator v0.0.0-20210503035427-4955ac5d5746
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible

@@ -1165,6 +1165,8 @@ github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWEr
 github.com/open-cluster-management/addon-framework v0.0.0-20210414095446-30a5d245b8c7/go.mod h1:qn6zmB/Npxr2OxM0nmGYs2rdvmwV6n3WCXc6JTOx/bQ=
 github.com/open-cluster-management/addon-framework v0.0.0-20210419013051-38730a847aff h1:ZFFgtkVySNuIQBO/DHxGodfHARzHqlnJgNFJdqRUZag=
 github.com/open-cluster-management/addon-framework v0.0.0-20210419013051-38730a847aff/go.mod h1:mcpd6pc0j/L+WLFwV2MXHVMr+86ri2iUdTK2M8RHJ7U=
+github.com/open-cluster-management/addon-framework v0.0.0-20210621074027-a81f712c10c2 h1:oHFveB+YtcfOF6zSTkGjgSWEHHkQUkwit7enNj5RRsI=
+github.com/open-cluster-management/addon-framework v0.0.0-20210621074027-a81f712c10c2/go.mod h1:mcpd6pc0j/L+WLFwV2MXHVMr+86ri2iUdTK2M8RHJ7U=
 github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294 h1:Ek/KLp95G0ThcfUQ5vFj7VAySJvOXbXBD4vJzHrkgJg=
 github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294/go.mod h1:F1hDJHtWuV7BAUtfL4XRS9GZjUpksleLgEcisNXvQEw=
 github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5/go.mod h1:hnMl9tQOA0wxgPAlZYYKvcuxbzQgP0GFQp9u9XFJpGs=
