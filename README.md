@@ -27,10 +27,9 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 ### Build the Operator
 
 - git clone this repository.
-- `export GOPRIVATE=github.com/open-cluster-management`
 - `go mod vendor`
 - `make docker-binary`
-- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/endpoint-monitoring-operator:v0.1.0.
+- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/stolostron/endpoint-monitoring-operator:v0.1.0.
 - push the image to the repo
 
 
@@ -38,7 +37,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 
 1. Prerequisite
 - Update the image in `deploy/operator.yaml`, to use the image built out in above step.
-- Update the value of env COLLECTOR_IMAGE in `deploy/operator.yaml`, for example: quay.io/open-cluster-management/metrics-collector:2.1.0-PR6-1b7cdb7b33bd9baed230a367465ec7238204648a.
+- Update the value of env COLLECTOR_IMAGE in `deploy/operator.yaml`, for example: quay.io/stolostron/metrics-collector:2.1.0-PR6-1b7cdb7b33bd9baed230a367465ec7238204648a.
 - Update your namespace in `deploy/role_binding.yaml`.
 - Create the pull secret that used to pull the images, and set it in `deploy/service_account.yaml`
 - Create the secret hub-info-secret.

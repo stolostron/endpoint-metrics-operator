@@ -1,4 +1,4 @@
-module github.com/open-cluster-management/endpoint-metrics-operator
+module github.com/stolostron/endpoint-metrics-operator
 
 go 1.13
 
@@ -14,6 +14,7 @@ require (
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kubectl v0.18.2
 	sigs.k8s.io/controller-runtime v0.6.0
 )
 
@@ -24,10 +25,9 @@ replace (
 	github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/consul => github.com/hashicorp/consul v1.7.4
-	github.com/jetstack/cert-manager => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
+	github.com/jetstack/cert-manager => github.com/stolostron/cert-manager v0.0.0-20200821135248-2fd523b053f5
 	github.com/mholt/caddy => github.com/caddyserver/caddy v1.0.5
-	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
-	github.com/open-cluster-management/multicloud-operators-placementrule => github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d
+	github.com/open-cluster-management/api => open-cluster-management.io/api v0.2.0
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
 	github.com/openshift/origin => github.com/openshift/origin v1.2.0
 	k8s.io/client-go => k8s.io/client-go v0.19.0

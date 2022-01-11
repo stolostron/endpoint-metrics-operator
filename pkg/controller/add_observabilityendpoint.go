@@ -3,7 +3,7 @@
 package controller
 
 import (
-	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/controller/observabilityendpoint"
+	"github.com/stolostron/endpoint-metrics-operator/pkg/controller/observabilityendpoint"
 )
 
 func init() {
