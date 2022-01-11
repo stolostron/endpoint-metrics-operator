@@ -24,10 +24,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	obsepctl "github.com/open-cluster-management/endpoint-metrics-operator/controllers/observabilityendpoint"
-	statusctl "github.com/open-cluster-management/endpoint-metrics-operator/controllers/status"
-	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/util"
-	"github.com/open-cluster-management/endpoint-metrics-operator/version"
+	obsepctl "github.com/stolostron/endpoint-metrics-operator/controllers/observabilityendpoint"
+	statusctl "github.com/stolostron/endpoint-metrics-operator/controllers/status"
+	"github.com/stolostron/endpoint-metrics-operator/pkg/util"
+	"github.com/stolostron/endpoint-metrics-operator/version"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	// +kubebuilder:scaffold:imports
 )

@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/util"
+	"github.com/stolostron/endpoint-metrics-operator/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 )
 

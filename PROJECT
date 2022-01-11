@@ -1,7 +1,7 @@
 domain: open-cluster-management.io
 layout: go.kubebuilder.io/v3
 projectName: endpoint-metrics-operator
-repo: github.com/open-cluster-management/endpoint-metrics-operator
+repo: github.com/stolostron/endpoint-metrics-operator
 resources:
 - crdVersion: v1
   group: observability.open-cluster-management.io
