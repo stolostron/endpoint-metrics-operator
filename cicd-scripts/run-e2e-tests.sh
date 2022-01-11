@@ -3,6 +3,7 @@
 
 WORKDIR=`pwd`
 cd ${WORKDIR}/..
+git config --global url."https://$GITHUB_TOKEN@github.com/stolostron".insteadOf  "https://github.com/stolostron"
 git clone --depth 1 -b release-2.2 https://github.com/stolostron/observability-kind-cluster.git
 cd observability-kind-cluster
 ./setup.sh $1
