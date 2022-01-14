@@ -28,7 +28,7 @@ import (
 	statusctl "github.com/stolostron/endpoint-metrics-operator/controllers/status"
 	"github.com/stolostron/endpoint-metrics-operator/pkg/util"
 	"github.com/stolostron/endpoint-metrics-operator/version"
-	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/api/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
 
