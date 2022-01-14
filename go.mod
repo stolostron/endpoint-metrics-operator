@@ -3,19 +3,19 @@ module github.com/stolostron/endpoint-metrics-operator
 go 1.13
 
 require (
-	github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
-	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20201029062159-ac5203c2f91d
+	github.com/open-cluster-management/api v0.0.0-20210513122330-d76f10481f05
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20201020082437-7737f16e53fc
 	github.com/operator-framework/operator-sdk v0.18.0
+	github.com/stolostron/multicluster-monitoring-operator v0.0.0-20220114103425-bf1679715dcd
 	github.com/sykesm/zap-logfmt v0.0.4
 	go.uber.org/zap v1.15.0
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.19.2
-	k8s.io/apimachinery v0.19.2
+	k8s.io/api v0.20.1
+	k8s.io/apimachinery v0.20.1
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/kubectl v0.18.2
-	sigs.k8s.io/controller-runtime v0.6.0
+	k8s.io/kubectl v0.19.0
+	sigs.k8s.io/controller-runtime v0.6.3
 )
 
 replace (
@@ -30,5 +30,7 @@ replace (
 	github.com/open-cluster-management/api => open-cluster-management.io/api v0.2.0
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
 	github.com/openshift/origin => github.com/openshift/origin v1.2.0
+	github.com/stolostron/multicluster-monitoring-operator => github.com/stolostron/multicluster-observability-operator v0.0.0-20220114103425-bf1679715dcd
+	k8s.io/api => k8s.io/api v0.19.0
 	k8s.io/client-go => k8s.io/client-go v0.19.0
 )
