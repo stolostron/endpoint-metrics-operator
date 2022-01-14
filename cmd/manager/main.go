@@ -29,9 +29,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/controller"
-	"github.com/open-cluster-management/endpoint-metrics-operator/version"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	"github.com/stolostron/endpoint-metrics-operator/pkg/controller"
+	"github.com/stolostron/endpoint-metrics-operator/version"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/apis"
 )
 
 // Change below variables to serve metrics on different host or port.
