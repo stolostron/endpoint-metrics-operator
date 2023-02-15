@@ -54,7 +54,7 @@ require (
 	github.com/openshift/library-go v0.0.0-20210330121802-ebbc677c82a5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.48.1 // indirect
-	github.com/prometheus/client_golang v1.11.0 // indirect
+	github.com/prometheus/client_golang v1.11.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
