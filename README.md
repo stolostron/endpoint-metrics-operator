@@ -1,3 +1,5 @@
+> [!IMPORTANT]
+> This repository is archived, as the code has moved to the [multicluster-observability-operator](https://github.com/stolostron/multicluster-observability-operator/tree/main/operators/endpointmetrics) repo.
 
 # endpoint-monitoring-operator
 
